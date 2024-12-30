@@ -19,4 +19,26 @@
     box-sizing: border-box; /* Ensures padding is included in width calculations */
   }
 
-  
+  .button-position {
+    position: absolute; 
+    height:6%;
+    width: 10%; 
+    background-color:black;
+    color: white;
+    /* padding:8px; */
+    margin-left: 8px;
+    /* margin-bottom: 2px; */
+    /* padding: 6px; */
+    bottom:15px;
+    border-radius: 6px;
+    transition-duration: 0.4s;
+    top: 100px; /* Adjust the distance from the top edge */
+    left: 10px; /* Adjust the distance from the left edge */
+    z-index: 1000; /* Ensure it stays on top of other elements */
+}
+
+
+.button-position:hover {
+  background-color: #ffffff;
+  color: rgb(0, 0, 0);
+}

@@ -3,6 +3,10 @@ import React, { useState, useEffect } from "react";
 import "./Main.css";
 import PipelineCard from "./PipelineCard/PipelineCard.js";
 import { useSpring, animated } from "react-spring";
+import { Link } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import NavHead from "../Home/NavHead/NavHead.js";
 
 const Home = () => {
 
@@ -70,12 +74,20 @@ const Home = () => {
   ];
   
   return (
+    <div><NavHead />
     <div className="home-container">
+      
       <div className="container">
           <div className="row justify-content-center">
             <div className="col-14 text-center">
 
-               
+            <div className="back-button">
+            <Link className=" text-white text-decoration-none" to={`/home`}>
+              <button className="button-position">
+              <FontAwesomeIcon icon={faArrowLeft} /> Home
+              </button>
+            </Link>
+            </div>
     <h1>Setting up DevOps Pipeline... </h1>
     <animated.div style={props}>  
     <div className="card-container">
@@ -92,7 +104,7 @@ const Home = () => {
       </div> 
       </animated.div>   
     </div></div></div>
-    </div>
+    </div></div>
   ); 
 };
 
