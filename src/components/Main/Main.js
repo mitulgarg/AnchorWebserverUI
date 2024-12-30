@@ -85,11 +85,11 @@ const Main = () => {
       {
         id: 1,
         task: "Local File Generation",
-        desc: `Generating configuration files for ${formData.cloudProvider}`,
+        desc: `Generating DockerFile, Jenkinsfile, requirements, etc`,
       },
       {
         id: 2,
-        task: `${formData.scmProvider || "Push"}`,
+        task: `${formData.scmProvider} Push`,
         desc: `Pushing changes to selected SCM provider:  ${formData.scmProvider}`,
       },
       {
@@ -99,8 +99,8 @@ const Main = () => {
       },
       {
         id: 4,
-        task: "Jenkins Server",
-        desc: `Login - Setup - configure Jenkins on EC2 instance on ${formData.cloudProvider}`,
+        task: "Installations on EC2",
+        desc: `Jenkins,Docker Login, Setup, Configure  on ${formData.cloudProvider} EC2`,
       },
       {
         id: 5,

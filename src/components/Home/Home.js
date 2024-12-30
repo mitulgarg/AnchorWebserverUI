@@ -15,8 +15,8 @@ function Home() {
         <div className="content-container">
         <h1>Welcome to Auto Anchor</h1>
         <p className="description">
-          Auto Anchor leverages Generative AI to give our users the DevOps Automation they need based just a few customizable inputs! Our Product sets up the entire CI/CD pipeline! From generating essential DevOps files 
-          like Dockerfiles, Jenkinsfiles, requirements.txt to deploying your applications on AWS, Auto Anchor simplifies the entire process without any human intervention! 
+          Auto Anchor leverages Generative AI to give our users the DevOps Automation they need based just a few customizable inputs! Our Product sets up the entire CI/CD pipeline! This Agentic AI solution generates essential DevOps config files 
+          like Dockerfiles, Jenkinsfiles, requirements.txt and deploys your applications on AWS, utilizing Jenkins for Pipeline creation without any human intervention! 
           Whether you're setting up local builds or scaling applications with Kubernetes, our platform is built to streamline your workflows and save valuable time.</p>
 
       <Link className=" text-white text-decoration-none" to={`/forms`}>
