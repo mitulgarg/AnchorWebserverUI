@@ -89,17 +89,17 @@ const Main = () => {
       },
       {
         id: 2,
-        task: `${formData.scmProvider} Push`,
+        task: `${formData.scmProvider} Repo Push`,
         desc: `Pushing changes to selected SCM provider:  ${formData.scmProvider}`,
       },
       {
         id: 3,
         task: `${formData.cloudProvider} EC2 setup`,
-        desc: `Generate Terraform files for EC2 setup on ${formData.cloudProvider}`,
+        desc: `Generate Terraform files for EC2/VM setup on ${formData.cloudProvider}`,
       },
       {
         id: 4,
-        task: "Installations on EC2",
+        task: "Installations on VM",
         desc: `Jenkins,Docker Login, Setup, Configure  on ${formData.cloudProvider} EC2`,
       },
       {
@@ -109,7 +109,7 @@ const Main = () => {
       },
       {
         id: 6,
-        task: `${formData.cloudProvider} ECR Registry Push`,
+        task: `${formData.cloudProvider} ECR Push`,
         desc: `Push Docker image to ${formData.cloudProvider} ECR Registry`,
       },
       {

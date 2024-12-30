@@ -2,7 +2,7 @@
     display: flex;
     justify-content: center; /* Center horizontally */
     align-items: center; /* Center vertically */
-    min-height: 89vh; /* Make sure it takes the full viewport height */
+    min-height: 88.7vh; /* Make sure it takes the full viewport height */
     background-color: #f8f9fa; /* Optional: Add a subtle background color */
   }
 
@@ -14,8 +14,8 @@
   }
   
   .pipeline-card {
-    flex: 0 1 calc(10% - 10px); /* Each card takes up 25% of the width (4 cards per row) */
-    max-width: 150px; /* Optional: Maximum width for each card */
+    flex: 0 1 calc(25% - 5px); /* Each card takes up 25% of the width (4 cards per row) */
+    max-width: 165px; /* Optional: Maximum width for each card */
     box-sizing: border-box; /* Ensures padding is included in width calculations */
   }
 

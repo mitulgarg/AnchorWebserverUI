@@ -9,7 +9,7 @@ import { Checkmark } from 'react-checkmark'
 const PipelineCard = ({ task, desc, isAnimating, validated }) => {
   return (
     <div className="pipeline-card">
-      <Card style={{ width: "15.25rem", height: "13.6rem" }}>
+      <Card style={{ width: "16rem", height: "13.6rem" }}>
         <Card.Body>
           <Card.Title>{task}</Card.Title>
           <Card.Text>
@@ -17,8 +17,10 @@ const PipelineCard = ({ task, desc, isAnimating, validated }) => {
               <div className="loading-animation">
                 <CircularProgress size={30} />
               </div>
-            ) : validated ? (              
-              <span style={{ color: "green" , fontSize:"14px"}}><Checkmark size='30px' color='green' />{desc}</span> // Green color when validated
+            ) : validated ? (  
+              <div className="checkmark-container">           
+              <Checkmark size='32px' color='green' /><div className="cardtext"><span style={{ color: "green" , fontSize:"14px"}}>{desc}</span> </div>
+              </div>
             ) : (
               <span style={{ color: "maroon" , fontSize:"14px"}}>Pending {desc}</span> // Red color for non-validated tasks
             )}
@@ -30,49 +32,3 @@ const PipelineCard = ({ task, desc, isAnimating, validated }) => {
 };
 
 export default PipelineCard;
-
-
-
-
-
-
-
-// import React from "react";
-// import './PipelineCard.css';
-// import Card from 'react-bootstrap/Card';
-// import { useSpring, animated } from "react-spring";
-// import { CircularProgress } from "@mui/material"; // Import Material UI progress spinner (optional)
-
-// const PipelineCard = ({ task, desc, isAnimating, validated }) => {
-//   // Define animation using react-spring
-//   const animationProps = useSpring({
-//     loop: true,
-//     to: { transform: "rotate(360deg)" },
-//     from: { transform: "rotate(0deg)" },
-//     config: { duration: 1000 },
-//   });
-
-//   return (
-//     <div className="pipeline-card">
-//       <Card style={{ width: "15.25rem", height: "10.6rem" }}>
-//       <Card.Body>
-//           <Card.Title>{task}</Card.Title>
-//           <Card.Text>
-//             {isAnimating ? (
-//               <div className="loading-animation">
-//                 <CircularProgress size={30} />
-//               </div>
-//             ) : validated ? (
-//               <span style={{ color: "green" }}>✔️ {desc}</span>
-//             ) : (
-//               <span style={{ color: "red" }}>❌ {desc}</span>
-//             )}
-//           </Card.Text>
-//         </Card.Body>
-//       </Card>
-//     </div>
-//   );
-// };
-
-
-// export default PipelineCard;

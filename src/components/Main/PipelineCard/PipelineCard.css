@@ -1,14 +1,14 @@
 .pipeline-card {
-    /* background-color: #757474; */
+    /* background-color: black; */
     border-radius: 16px;
     padding: 4px;
     margin-bottom: 1px;
-    width: 15.25rem; 
+    width: 16rem; 
     height: 14.1rem;
     position: relative;
     margin-left: 0px;
     margin-right: 10px;
-    margin-top: 25px;
+    margin-top: 65px;
     display: flex;
     border-radius: 6px;
     box-shadow: 0px 0px 20px rgba(68, 66, 66, 0.4);
@@ -22,6 +22,7 @@
   }
   
   .pipeline-card p {
+    margin-top: 10%;
     font-size: 16px;
     margin-bottom: 4px;
   }
@@ -30,7 +31,7 @@
     object-fit: cover;
     height: 50%;
   }
-/* PipelineCard.css */
+
 .success-circle {
     display: flex;
     justify-content: center;
@@ -42,7 +43,21 @@
     animation: successAnimation 0.5s ease-in-out;
   }
 
+  .checkmark-container {
+    display: flex;
+    z-index: "10vh";
+    margin-top: 14%;
+    margin-bottom: 30%;
+    flex-direction: column; /* Align text below the checkmark */
+    align-items: center; /* Center horizontally */
+    justify-content: center; /* Center vertically */
+    height: 100%; /* Ensure it takes up the full card space */
+  }
+  
 
+.cardtext{
+    margin-top: 1.5%;
+}
 
   .loading-animation {
     display: flex;
