@@ -1,0 +1,119 @@
+/* .App {
+  text-align: center;
+}
+
+.App-logo {
+  pointer-events: none;
+  transition: height 0.2s ease; 
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.navbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: #333;
+  color: white;
+  padding: 10px;
+  display: none;
+}
+
+.navbar ul {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+.navbar li {
+  display: inline;
+  margin: 0 20px;
+}
+
+.navbar a {
+  color: white;
+  text-decoration: none;
+}
+
+.popup-text {
+  color: white;
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2rem;
+  display: none;
+}
+
+.content {
+  display: block;
+  padding-top: 50vh; 
+}
+
+.extra-content {
+  padding: 50px 0;
+  background-color: #f4f4f4;
+}
+
+.extra-content h2 {
+  font-size: 2rem;
+  color: #333;
+}
+
+.extra-content p {
+  font-size: 1rem;
+  color: #555;
+} */
+
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  transition: height 0.2s ease;
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.content {
+  min-height: 200vh; /* Ensure the content extends beyond the viewport for scrolling */
+  padding: 20px;
+}
+
+.popup-text {
+  margin-top: 20px;
+  font-size: 24px;
+}
+
+.extra-content {
+  margin-top: 30px;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

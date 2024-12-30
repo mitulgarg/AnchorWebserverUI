@@ -1,0 +1,49 @@
+{
+  "name": "my-react-project",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^6.3.0",
+    "@mui/material": "^6.3.0",
+    "bootstrap": "^5.3.3",
+    "cra-template": "1.2.0",
+    "react": "^18.3.1",
+    "react-bootstrap": "^2.10.7",
+    "react-checkmark": "^2.1.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.1",
+    "react-scripts": "^5.0.1",
+    "react-spring": "^9.7.5",
+    "reactstrap": "^9.2.3",
+    "web-vitals": "^4.2.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
+  }
+}

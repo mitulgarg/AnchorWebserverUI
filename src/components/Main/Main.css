@@ -1,0 +1,22 @@
+.home-container {
+    display: flex;
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    min-height: 90vh; /* Make sure it takes the full viewport height */
+    background-color: #f8f9fa; /* Optional: Add a subtle background color */
+  }
+
+.card-container {
+    display: flex; /* Enables horizontal stacking */
+    flex-wrap: wrap; /* Allows wrapping to the next line if necessary */
+    gap: 10px; /* Space between the cards */
+    justify-content: center; 
+  }
+  
+  .pipeline-card {
+    flex: 0 1 calc(10% - 10px); /* Each card takes up 25% of the width (4 cards per row) */
+    max-width: 150px; /* Optional: Maximum width for each card */
+    box-sizing: border-box; /* Ensures padding is included in width calculations */
+  }
+
+  
