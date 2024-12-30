@@ -10,8 +10,8 @@ function ImageSlider() {
   };
 
   const imageSources = {
-    "First slide": "/photos/Homepage1.png",
-    "Second slide": "/photos/Homepage1.png",
+    "First slide": "/photos/agentic.webp",
+    "Second slide": "/photos/devops-security.webp",
     "Third slide": "/photos/Homepage1.png",
   };
 
@@ -28,7 +28,7 @@ function ImageSlider() {
               className="img" 
             />
             <Carousel.Caption>
-              <p>{text === "First slide" ? "Explore the most Holy and Ancient Temples!" : text === "Second slide" ? "India has a vast majority of Temples!" : "Click on The temple You wish to know more about!"}</p>
+              <p>{text === "First slide" ? "Agentic AI Is the Key To the Future!" : text === "Second slide" ? "The End-End Process Automation!" : "Some of the Important Tools in DevOps!"}</p>
             </Carousel.Caption>
           </Carousel.Item>
         ))}

@@ -14,7 +14,7 @@ const NavHead = () => {
                     <Container fluid>                 
                         <Link 
                         className=" text-white text-decoration-none" 
-                        to={`/`}>
+                        to={`/home`}>
                             <h3 className="nav-links" style={{ marginTop: "0.5rem",marginLeft:"2rem"}}>
                                 <img src="TransparentWhiteLogo1.png" alt="icon" style={{ width: '40px', height: '40px', marginRight: "1rem" ,marginBottom: "0.2rem"}}>
                                     </img>Auto Anchor

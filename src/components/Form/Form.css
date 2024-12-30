@@ -1,0 +1,70 @@
+.form-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #f8f9fa; /* Light background color */
+    padding: 20px;
+  }
+  
+  h1 {
+    font-size: 2.2rem;
+    color: #343a40; /* Darker text color for contrast */
+    margin-bottom: 20px;
+  }
+  
+  .form-content {
+    background-color: #ffffff; /* White background for form */
+    border: 1px solid #dee2e6; /* Light border */
+    border-radius: 8px;
+    padding: 30px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+    text-align: left;
+  }
+  
+  label {
+    font-size: 1rem;
+    color: #495057;
+    margin-bottom: 8px;
+    display: block;
+  }
+  
+  select,
+  input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ced4da; /* Light gray border */
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  
+  select:focus,
+  input[type="text"]:focus {
+    border-color: #343a40; /* Highlight on focus */
+  }
+  
+  .form-submit-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 1.1rem;
+    background-color: black;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition-duration: 0.4s;
+  }
+  
+  .form-submit-button:hover {
+    background-color: #ffffff;
+    color: rgb(0, 0, 0);/* Slightly lighter on hover */
+  }
+

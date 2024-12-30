@@ -9,16 +9,25 @@ import NavHead from './NavHead/NavHead.js';
 
 function Home() {
   return (
-    <div className="home">
+    <div>
         <NavHead />
-      <h1>Welcome to Auto Anchor</h1>
-      <ImageSlider />
-      <Link className=" text-white text-decoration-none" to={`/main`}>
+        <div className="home">
+        <div className="content-container">
+        <h1>Welcome to Auto Anchor</h1>
+        <p className="description">
+          Auto Anchor leverages Generative AI to give our users the DevOps Automation they need based just a few customizable inputs! Our Product sets up the entire CI/CD pipeline! From generating essential DevOps files 
+          like Dockerfiles, Jenkinsfiles, requirements.txt to deploying your applications on AWS, Auto Anchor simplifies the entire process without any human intervention! 
+          Whether you're setting up local builds or scaling applications with Kubernetes, our platform is built to streamline your workflows and save valuable time.</p>
+
+      <Link className=" text-white text-decoration-none" to={`/forms`}>
               <button className="button-home">
                 Setup Your CI/CD Pipeline Now <FontAwesomeIcon icon={faArrowRight} /> 
               </button>
         </Link>
+        <ImageSlider />
 
+        </div>
+        </div>
     </div>
   );
 }
