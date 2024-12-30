@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./Form.css"; // Add styles in a separate CSS file
 import NavHead from "../Home/NavHead/NavHead.js";
-import { Link } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";  // Import useNavigate
 
 const Form = () => {
   const [formData, setFormData] = useState({
@@ -12,22 +12,25 @@ const Form = () => {
     scmProvider: "",
   });
 
+  const navigate = useNavigate();  // Initialize the navigate function
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Form Submitted:", formData);
-    // Handle form submission logic
+    e.preventDefault();  // Prevent form from reloading the page
+    console.log("Form Submitted:", formData);  // Log the form data
+    // Navigate to /main after submission
+    navigate("/main", { state: formData });  
   };
 
   return (
     <div>
       <NavHead />
       <div className="form-container">
-        <h1>Customize Your Pipeline with just few simple inputs!</h1>
+        <h1>Customize Your Pipeline with just a few simple inputs!</h1>
         <form className="form-content" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="cloudProvider">Cloud Provider</label>
@@ -104,12 +107,10 @@ const Form = () => {
               <option value="Bitbucket">Bitbucket</option>
             </select>
           </div>
-          <Link className=" text-white text-decoration-none" to={`/main`}>
+
           <button type="submit" className="form-submit-button">
             Submit Configuration
           </button>
-        </Link>
-
         </form>
       </div>
     </div>
