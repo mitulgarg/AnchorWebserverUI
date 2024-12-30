@@ -6,23 +6,6 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle"; // Import CheckCi
 import { keyframes } from "@emotion/react";
 import { Checkmark } from 'react-checkmark'
 
-// Define an animation for the success circle
-const successAnimation = keyframes`
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-`;
-
-
 const PipelineCard = ({ task, desc, isAnimating, validated }) => {
   return (
     <div className="pipeline-card">
@@ -34,11 +17,10 @@ const PipelineCard = ({ task, desc, isAnimating, validated }) => {
               <div className="loading-animation">
                 <CircularProgress size={30} />
               </div>
-            ) : validated ? (
-              
-              <span style={{ color: "green" }}><Checkmark size='30px' color='green' />{desc}</span> // Green color when validated
+            ) : validated ? (              
+              <span style={{ color: "green" , fontSize:"14px"}}><Checkmark size='30px' color='green' />{desc}</span> // Green color when validated
             ) : (
-              <span style={{ color: "maroon" }}>Pending {desc}</span> // Red color for non-validated tasks
+              <span style={{ color: "maroon" , fontSize:"14px"}}>Pending {desc}</span> // Red color for non-validated tasks
             )}
           </Card.Text>
         </Card.Body>

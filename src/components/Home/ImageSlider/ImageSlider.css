@@ -1,0 +1,15 @@
+.img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    filter: brightness(0.95) contrast(1.05);
+    transition: filter 0.3s ease;
+    height: 65vh;
+    background-color: rgba(0, 0, 0, 0.3); /* Adjust the opacity (last value) as needed */
+
+  }
+  
+  .img:hover {
+    filter: brightness(1) contrast(1.1); /* Slightly enhanced effect on hover */
+  }
+  
