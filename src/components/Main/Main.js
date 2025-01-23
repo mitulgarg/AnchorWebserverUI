@@ -8,6 +8,8 @@ import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import NavHead from "../Home/NavHead/NavHead.js";
+import axios from "axios";
+
 
 const Main = () => {
 
@@ -26,48 +28,98 @@ const Main = () => {
       delay:550,
       onRest: ()=> setFlip(!flip),
   })
+
   const [taskStatus, setTaskStatus] = useState([
-    { id: 1, isAnimating: true, validated: true},
+    { id: 1, isAnimating: true, validated: false },
     { id: 2, isAnimating: false, validated: false },
-    { id: 3, isAnimating: false, validated: false },
-    { id: 4, isAnimating: false, validated: false },
-    { id: 5, isAnimating: false, validated: false },
-    { id: 6, isAnimating: false, validated: false },
-    { id: 7, isAnimating: false, validated: false },
+    // { id: 3, isAnimating: false, validated: false },
+    // { id: 4, isAnimating: false, validated: false },
+    // { id: 5, isAnimating: false, validated: false },
+    // { id: 6, isAnimating: false, validated: false },
+    // { id: 7, isAnimating: false, validated: false },
   ]);
 
-  // Simulate validation for each step
-  const validateStep = (id) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`Validated step ${id}`);
-        resolve(true); // Simulate success (use actual validation logic here)
-      }, 2000); // Simulated delay
-    });
-  };
+  const validateStep = async (id) => {
+    const endpointMapping = {
+      1: "http://127.0.0.1:8000/requirements",
+      2: "http://127.0.0.1:8000/aws", // Example endpoint for step 2
+      // 3: "http://127.0.0.1:8000/ec2",
+      // 4: "http://127.0.0.1:8000/jenkins",
+      // 5: "http://127.0.0.1:8000/build",
+      // 6: "http://127.0.0.1:8000/ecr",
+      // 7: "http://127.0.0.1:8000/eks",
+    };
 
-  useEffect(() => {
-    const runWorkflow = async () => {
-      for (let i = 0; i < taskStatus.length; i++) {
-        const step = taskStatus[i];
-        if (step.isAnimating) {
-          const isValid = await validateStep(step.id);
-          if (isValid) {
+  const endpoint = endpointMapping[id];
+  if (!endpoint) {
+    console.error(`No endpoint mapped for task ID ${id}`);
+    return false;
+  }
+
+  try {
+    const response = await axios.get(endpoint);
+    // Assuming the API returns a response with a success flag
+    console.log(`Validated step ${id}:`, response.data);
+    return response.data.success; // Adjust based on your API response structure
+  } catch (error) {
+    console.error(`Error validating step ${id}:`, error);
+    return false; // Consider the step invalid if the API call fails
+  }
+};
+
+useEffect(() => {
+  const runWorkflow = async () => {
+    for (let i = 0; i < taskStatus.length; i++) {
+      const step = taskStatus[i];
+      if (step.isAnimating) {
+        const isValid = await validateStep(step.id);
+        if (isValid) {
+          console.log(isValid)
+          await new Promise((resolve) => {
             setTaskStatus((prevStatus) => {
               const updatedStatus = [...prevStatus];
               updatedStatus[i].isAnimating = false;
-              updatedStatus[i].validated = true; // Ensure it's marked as validated
+              updatedStatus[i].validated = true;
               if (i + 1 < updatedStatus.length) {
                 updatedStatus[i + 1].isAnimating = true;
               }
+              resolve(); // Ensure the state update is completed before proceeding
               return updatedStatus;
             });
-          }
+          });
+        } else {
+          console.error(`Step ${step.id} validation failed.`);
+          break; // Stop the workflow if a step fails
         }
       }
-    };
-    runWorkflow();
-  }, [taskStatus]);
+    }
+  };
+  runWorkflow();
+}, []);
+
+
+  // useEffect(() => {
+  //   const runWorkflow = async () => {
+  //     for (let i = 0; i < taskStatus.length; i++) {
+  //       const step = taskStatus[i];
+  //       if (step.isAnimating) {
+  //         const isValid = await validateStep(step.id);
+  //         if (isValid) {
+  //           setTaskStatus((prevStatus) => {
+  //             const updatedStatus = [...prevStatus];
+  //             updatedStatus[i].isAnimating = false;
+  //             updatedStatus[i].validated = true; // Ensure it's marked as validated
+  //             if (i + 1 < updatedStatus.length) {
+  //               updatedStatus[i + 1].isAnimating = true;
+  //             }
+  //             return updatedStatus;
+  //           });
+  //         }
+  //       }
+  //     }
+  //   };
+  //   runWorkflow();
+  // }, [taskStatus]);
 
   // const cardData = [
   //   { id: 1, task: "Local File Generation", desc: "Dockerfile, Jenkinsfile, requirements.txt" },
