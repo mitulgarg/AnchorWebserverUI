@@ -32,70 +32,65 @@ const Main = () => {
   const [taskStatus, setTaskStatus] = useState([
     { id: 1, isAnimating: true, validated: false },
     { id: 2, isAnimating: false, validated: false },
-    // { id: 3, isAnimating: false, validated: false },
-    // { id: 4, isAnimating: false, validated: false },
-    // { id: 5, isAnimating: false, validated: false },
-    // { id: 6, isAnimating: false, validated: false },
-    // { id: 7, isAnimating: false, validated: false },
+    { id: 3, isAnimating: false, validated: false },
+    { id: 4, isAnimating: false, validated: false },
+    { id: 5, isAnimating: false, validated: false },
   ]);
 
   const validateStep = async (id) => {
     const endpointMapping = {
       1: "http://127.0.0.1:8000/requirements",
       2: "http://127.0.0.1:8000/aws", // Example endpoint for step 2
-      // 3: "http://127.0.0.1:8000/ec2",
-      // 4: "http://127.0.0.1:8000/jenkins",
-      // 5: "http://127.0.0.1:8000/build",
-      // 6: "http://127.0.0.1:8000/ecr",
-      // 7: "http://127.0.0.1:8000/eks",
+      3: "http://127.0.0.1:8000/context",
+      4: "http://127.0.0.1:8000/dockerfile",
+      5: "http://127.0.0.1:8000/jenkins",
     };
 
-  const endpoint = endpointMapping[id];
-  if (!endpoint) {
-    console.error(`No endpoint mapped for task ID ${id}`);
-    return false;
-  }
-
-  try {
-    const response = await axios.get(endpoint);
-    // Assuming the API returns a response with a success flag
-    console.log(`Validated step ${id}:`, response.data);
-    return response.data.success; // Adjust based on your API response structure
-  } catch (error) {
-    console.error(`Error validating step ${id}:`, error);
-    return false; // Consider the step invalid if the API call fails
-  }
-};
-
-useEffect(() => {
-  const runWorkflow = async () => {
-    for (let i = 0; i < taskStatus.length; i++) {
-      const step = taskStatus[i];
-      if (step.isAnimating) {
-        const isValid = await validateStep(step.id);
-        if (isValid) {
-          console.log(isValid)
-          await new Promise((resolve) => {
-            setTaskStatus((prevStatus) => {
-              const updatedStatus = [...prevStatus];
-              updatedStatus[i].isAnimating = false;
-              updatedStatus[i].validated = true;
-              if (i + 1 < updatedStatus.length) {
-                updatedStatus[i + 1].isAnimating = true;
-              }
-              resolve(); // Ensure the state update is completed before proceeding
-              return updatedStatus;
-            });
-          });
-        } else {
-          console.error(`Step ${step.id} validation failed.`);
-          break; // Stop the workflow if a step fails
-        }
-      }
+    const endpoint = endpointMapping[id];
+    if (!endpoint) {
+      console.error(`No endpoint mapped for task ID ${id}`);
+      return false;
+    }
+  
+    try {
+      const response = await axios.get(endpoint);
+      console.log(`Validated step ${id}:`, response.data);
+      return response.data.success; // Ensure success is a boolean in the API response
+    } catch (error) {
+      console.error(`Error validating step ${id}:`, error);
+      return false; // Consider the step invalid if the API call fails
     }
   };
-  runWorkflow();
-}, []);
+  
+  useEffect(() => {
+    const runWorkflow = async () => {
+      for (let i = 0; i < taskStatus.length; i++) {
+        const step = taskStatus[i];
+  
+        if (step.isAnimating) {
+          const isValid = await validateStep(step.id);
+  
+          if (isValid) {
+            setTaskStatus((prevStatus) =>
+              prevStatus.map((task, index) => {
+                if (index === i) {
+                  return { ...task, isAnimating: false, validated: true };
+                } else if (index === i + 1) {
+                  return { ...task, isAnimating: true };
+                }
+                return task;
+              })
+            );
+          } else {
+            console.error(`Step ${step.id} validation failed.`);
+            break; // Stop the workflow if a step fails
+          }
+        }
+      }
+    };
+  
+    runWorkflow();
+  }, [taskStatus]);
 
 
   // useEffect(() => {
@@ -133,41 +128,69 @@ useEffect(() => {
     // Check if all tasks are validated
 
 
-    const cardData = [
+    // const cardData = [
+    //   {
+    //     id: 1,
+    //     task: "Local File Generation",
+    //     desc: `Generating DockerFile, Jenkinsfile, requirements, etc`,
+    //   },
+    //   {
+    //     id: 2,
+    //     task: `${formData.scmProvider} Repo Push`,
+    //     desc: `Pushing changes to selected SCM provider:  ${formData.scmProvider}`,
+    //   },
+    //   {
+    //     id: 3,
+    //     task: `${formData.cloudProvider} EC2 setup`,
+    //     desc: `Generate Terraform files for EC2/VM setup on ${formData.cloudProvider}`,
+    //   },
+    //   {
+    //     id: 4,
+    //     task: "Installations on VM",
+    //     desc: `Jenkins,Docker Login, Setup, Configure  on ${formData.cloudProvider} EC2`,
+    //   },
+    //   {
+    //     id: 5,
+    //     task: `${formData.scmProvider} Build Test`,
+    //     desc: `Run build tests from ${formData.scmProvider}`,
+    //   },
+    //   {
+    //     id: 6,
+    //     task: `${formData.cloudProvider} ECR Push`,
+    //     desc: `Push Docker image to ${formData.cloudProvider} ECR Registry`,
+    //   },
+    //   {
+    //     id: 7,
+    //     task: `${formData.cloudProvider} EKS Setup`,
+    //     desc: `Deploy image to ${formData.cloudProvider} EKS`,
+    //   },
+    // ];
+
+        const cardData = [
       {
         id: 1,
-        task: "Local File Generation",
-        desc: `Generating DockerFile, Jenkinsfile, requirements, etc`,
+        task: "Curating context",
+        desc: `Generating requirements.txt and finding out about application type.`,
       },
       {
         id: 2,
-        task: `${formData.scmProvider} Repo Push`,
-        desc: `Pushing changes to selected SCM provider:  ${formData.scmProvider}`,
+        task: `Retrieval of Credentials`,
+        desc: `Retrieving AWS and ${formData.scmProvider} credentials.`,
       },
       {
         id: 3,
-        task: `${formData.cloudProvider} EC2 setup`,
-        desc: `Generate Terraform files for EC2/VM setup on ${formData.cloudProvider}`,
+        task: `Generative AI Script Generation`,
+        desc: `Generate Terraform files, Dockerfile and Jenkinsfile.`,
       },
       {
         id: 4,
-        task: "Installations on VM",
-        desc: `Jenkins,Docker Login, Setup, Configure  on ${formData.cloudProvider} EC2`,
+        task: `Setting up ${formData.cloudProvider} ${formData.serviceType}`,
+        desc: `Setting up Infra on ${formData.cloudProvider}`,
       },
       {
         id: 5,
-        task: `${formData.scmProvider} Build Test`,
-        desc: `Run build tests from ${formData.scmProvider}`,
-      },
-      {
-        id: 6,
-        task: `${formData.cloudProvider} ECR Push`,
-        desc: `Push Docker image to ${formData.cloudProvider} ECR Registry`,
-      },
-      {
-        id: 7,
-        task: `${formData.cloudProvider} EKS Setup`,
-        desc: `Deploy image to ${formData.cloudProvider} EKS`,
+        task: `Jenkins CI + CD`,
+        desc: `Creating your custom job on Jenkins`,
       },
     ];
 
