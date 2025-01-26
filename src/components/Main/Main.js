@@ -39,11 +39,11 @@ const Main = () => {
 
   const validateStep = async (id) => {
     const endpointMapping = {
-      1: "http://127.0.0.1:8000/requirements",
-      2: "http://127.0.0.1:8000/aws", // Example endpoint for step 2
-      3: "http://127.0.0.1:8000/context",
-      4: "http://127.0.0.1:8000/dockerfile",
-      5: "http://127.0.0.1:8000/jenkins",
+      1: "http://127.0.0.1:8000/analyzer",
+      2: "http://127.0.0.1:8000/creds", // Example endpoint for step 2
+      3: "http://127.0.0.1:8000/filegen",
+      4: "http://127.0.0.1:8000/infra",
+      5: "http://127.0.0.1:8000/analyzer",
     };
 
     const endpoint = endpointMapping[id];
@@ -169,7 +169,7 @@ const Main = () => {
         const cardData = [
       {
         id: 1,
-        task: "Curating context",
+        task: "Analyzing Tech Stack",
         desc: `Generating requirements.txt and finding out about application type.`,
       },
       {
@@ -179,8 +179,8 @@ const Main = () => {
       },
       {
         id: 3,
-        task: `Generative AI Script Generation`,
-        desc: `Generate Terraform files, Dockerfile and Jenkinsfile.`,
+        task: `Gen AI Script Generation`,
+        desc: `Generating Dockerfile, Jenkinsfile and Terraform files`,
       },
       {
         id: 4,
