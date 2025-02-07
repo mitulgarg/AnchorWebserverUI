@@ -13,7 +13,6 @@ import axios from "axios";
 
 const Main = () => {
 
-
   const { state } = useLocation();  // Get the passed state from navigate
   const formData = state || {};  // Fallback to empty object if no data is passed
 
@@ -92,79 +91,6 @@ const Main = () => {
     runWorkflow();
   }, [taskStatus]);
 
-
-  // useEffect(() => {
-  //   const runWorkflow = async () => {
-  //     for (let i = 0; i < taskStatus.length; i++) {
-  //       const step = taskStatus[i];
-  //       if (step.isAnimating) {
-  //         const isValid = await validateStep(step.id);
-  //         if (isValid) {
-  //           setTaskStatus((prevStatus) => {
-  //             const updatedStatus = [...prevStatus];
-  //             updatedStatus[i].isAnimating = false;
-  //             updatedStatus[i].validated = true; // Ensure it's marked as validated
-  //             if (i + 1 < updatedStatus.length) {
-  //               updatedStatus[i + 1].isAnimating = true;
-  //             }
-  //             return updatedStatus;
-  //           });
-  //         }
-  //       }
-  //     }
-  //   };
-  //   runWorkflow();
-  // }, [taskStatus]);
-
-  // const cardData = [
-  //   { id: 1, task: "Local File Generation", desc: "Dockerfile, Jenkinsfile, requirements.txt" },
-  //   { id: 2, task: "Github Push", desc: "Github Link retrieved" },
-  //   { id: 3, task: "AWS EC2 setup", desc: "Terraform Files Generation" },
-  //   { id: 4, task: "Jenkins Server AutoSetup on EC2", desc: "Login, Pipeline creation" },
-  //   { id: 5, task: "Github Build Test", desc: "Pipeline from SCM test" },
-  //   { id: 6, task: "ECR Registry Push", desc: "Push EC2 Image to Amazon ECR" },
-  //   { id: 7, task: "EKS Setup", desc: "Pushing Image to EKS from ECR" },
-  // ];
-    // Check if all tasks are validated
-
-
-    // const cardData = [
-    //   {
-    //     id: 1,
-    //     task: "Local File Generation",
-    //     desc: `Generating DockerFile, Jenkinsfile, requirements, etc`,
-    //   },
-    //   {
-    //     id: 2,
-    //     task: `${formData.scmProvider} Repo Push`,
-    //     desc: `Pushing changes to selected SCM provider:  ${formData.scmProvider}`,
-    //   },
-    //   {
-    //     id: 3,
-    //     task: `${formData.cloudProvider} EC2 setup`,
-    //     desc: `Generate Terraform files for EC2/VM setup on ${formData.cloudProvider}`,
-    //   },
-    //   {
-    //     id: 4,
-    //     task: "Installations on VM",
-    //     desc: `Jenkins,Docker Login, Setup, Configure  on ${formData.cloudProvider} EC2`,
-    //   },
-    //   {
-    //     id: 5,
-    //     task: `${formData.scmProvider} Build Test`,
-    //     desc: `Run build tests from ${formData.scmProvider}`,
-    //   },
-    //   {
-    //     id: 6,
-    //     task: `${formData.cloudProvider} ECR Push`,
-    //     desc: `Push Docker image to ${formData.cloudProvider} ECR Registry`,
-    //   },
-    //   {
-    //     id: 7,
-    //     task: `${formData.cloudProvider} EKS Setup`,
-    //     desc: `Deploy image to ${formData.cloudProvider} EKS`,
-    //   },
-    // ];
 
         const cardData = [
       {
