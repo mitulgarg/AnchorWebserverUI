@@ -1,11 +1,29 @@
-.nav-links {
-    display: inline-block;
-    height: 20px;
-    background-color:black;/*will change background-color of element */
-    color: green; /*will change color of text within the element */
-    }
-    
-.nav-links:hover {
-    background-color:green; /*will change background-color of element on hover */
-    color: white; /*will change color of text within the element on hover */
+.img-class {
+    display: flex;
+    align-items: center; /* Aligns logo and text vertically */
+    font-size: 1.5rem; /* Adjusts the font size of the text */
+    color: white; /* Ensures text color is white */
+    text-decoration: none;
+    transition: transform 0.3s ease, color 0.3s ease;
+    margin-top: 0.5rem; /* Adds smooth scaling and color transitions */
+    margin-left: 1.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.7rem; /* Increases font size for better visibility */
+    font-family: 'Poppins', sans-serif; /* Uses a modern, clean font */
+ /* Makes the font bold */
+    color: white; /* Ensures text color is white */
 }
+
+.img-class img {
+    width: 50px; /* Width of the logo */
+    height: 50px; /* Height of the logo */
+    margin-right: 1rem; /* Adds space between logo and text */
+    transition: transform 0.3s ease; /* Smooth scaling for the logo */
+}
+
+.img-class:hover {
+    transform: scale(1.03); /* Scales the entire container (logo + text) */
+    color: 	#A7C7E7; /* Changes text color to green on hover */
+}
+
+
