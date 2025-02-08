@@ -10,12 +10,30 @@ import InputForm from './InputForm/InputForm.js';
 
 const Agent = () => {
   const [query, setQuery] = useState("");
+  const [formColor, setFormColor] = useState("");
+  const [greeting, setGreeting] = useState("Hello, I am aCube! How can I assist you today?");
+  const [showGreeting, setShowGreeting] = useState(true); // State for fade animation
+
+  const handleButtonClick = (color, description) => {
+    setFormColor(color);
+
+    // Fade out the current greeting
+    setShowGreeting(false);
+
+    // After the fade-out is complete, update the greeting and fade it back in
+    setTimeout(() => {
+      setGreeting(description);
+      setShowGreeting(true);
+    }, 220); // Match the fade-out duration (adjust as needed)
+  };
+
 
   const handleSearch = () => {
     if (query) {
       console.log(query);
     }
   };
+
 
   return (
     <div>
@@ -28,33 +46,43 @@ const Agent = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75 }}
         >
-          <Card style={{ height: '700px', width: '800px' }} className="w-180 max-w-md p-4 shadow-lg rounded-3 bg-black">
+          <div className={`agent-card ${formColor}`}> 
+
+          <Card style={{ height: '700px', width: '800px'}} className={`w-180 max-w-md p-4 rounded-3 bg-black shadow-lg`}>
+            
             <Card.Body className="d-flex flex-column gap-3">
 
               <div className="h-64 overflow-auto p-3 bg-black rounded shadow-sm">
               <div className="text-secondary small d-flex align-items-center">
-    <img
-        className="chatbot-logo"
-        src="/ChatBot-Logo.png"
-        alt="ChatBot Logo"
-    />
-    <span className="ms-3 text-white fs-4">Hello, I am aCube! How can I assist you today?</span>
-</div>
+                <img
+                    className="chatbot-logo"
+                    src="/ChatBot-Logo.png"
+                    alt="ChatBot Logo"
+                />
+     <span className={`ms-3 text-white fs-4 ${showGreeting ? 'fade-in' : 'fade-out'}`}>{greeting}</span>
+
+            </div>
               </div>
-
-
               <div className="d-flex justify-content-center gap-2">
-                <Button variant="secondary">Option 1</Button>
-                <Button variant="secondary">Option 2</Button>
-                <Button variant="secondary">Option 3</Button>
+
+                <button className="agent-button-blue" onClick={() => handleButtonClick("blue-form", "Let's Setup your End-to-End CI/CD Pipeline!")}>
+                CI/CD Setup
+              </button>
+              <button className="agent-button-red" onClick={() => handleButtonClick("red-form", "Time to Modify/Create Resources!")}>
+                Modify Resources
+              </button>
+              <button className="agent-button-green" onClick={() => handleButtonClick("green-form", "You have selected to Observe Existing Setups!")}>
+                Observability
+              </button>
+
               </div>
-
-
               <div className="mt-auto">
-              <InputForm />
+              <InputForm formColor={formColor}/>
               </div>
             </Card.Body>
+
           </Card>
+          </div>
         </motion.div>
       </div>
     </div>

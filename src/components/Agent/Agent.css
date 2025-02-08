@@ -24,6 +24,44 @@
     align-items: center; /* Align items vertically in the center */
 }
 
+.text-secondary:hover {
+  display: flex; /* Use flexbox for alignment */
+  align-items: center; /* Align items vertically in the center */
+  transition: transform 0.3s ease;
+  transform: scale(1.01);
+}
+
+
+
+
+.agent-card {
+
+  box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.agent-card:hover {
+  border: 4px solid white;
+  box-shadow: 0px 12px 30px rgba(0, 0, 0, 0.35);
+  border-color: #f0f0f0;
+}
+
+/* Corrected CSS - Combined Class Selectors */
+.agent-card.blue-form {
+  border: 4px solid #004ea2;
+}
+
+.agent-card.red-form {
+  border: 4px solid #910000;
+}
+
+.agent-card.green-form {
+  border: 4px solid #00721b;
+}
+
+
+
 .chatbot-logo {
     height: 44px; /* Circle size */
     width: 44px;
@@ -32,12 +70,92 @@
     transition: transform 0.3s ease; /* Smooth zoom effect on hover */
 }
 
-.chatbot-logo:hover {
-    transform: scale(1.1); /* Slightly zooms in the image on hover */
-}
+/* .chatbot-logo:hover {
+    transform: scale(1.1); /* Slightly zooms in the image on hover 
+} */
 
 .ms-3 {
     margin-left: 1rem; /* Space between the image and text */
-}
+
+  }
 
   
+
+
+.agent-button-blue{
+  height: 50px;
+  width: 200px; 
+  background-color: black;
+  color: #004ea2;
+  border: 3px solid #004ea2;
+  border-radius: 12px;
+
+  font-size: 1.2rem;
+  transition-duration: 0.4s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto; /* Center horizontally and add spacing */
+}
+
+
+.agent-button-blue:hover {
+  background-color: #004ea2;
+  color: rgb(255, 255, 255);
+}
+
+
+.agent-button-red{
+  height: 50px;
+  width: 200px; 
+  background-color: black;
+  color: #910000;
+  border-radius: 12px;
+  border: 3px solid #910000;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition-duration: 0.4s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto; /* Center horizontally and add spacing */
+}
+
+
+.agent-button-red:hover {
+  background-color: #910000;
+  color: rgb(255, 255, 255);
+}
+
+
+.agent-button-green{
+  height: 50px;
+  width: 200px; 
+  background-color: black;
+  color: #00721b;
+  border-radius: 12px;
+  border: 3px solid #00721b;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition-duration: 0.4s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto; /* Center horizontally and add spacing */
+}
+
+
+.agent-button-green:hover {
+  background-color: #00721b;
+  color: rgb(255, 255, 255);
+}
+
+.fade-in {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out; /* Adjust duration as needed */
+}
+
+.fade-out {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out; /* Match fade-in duration */
+}

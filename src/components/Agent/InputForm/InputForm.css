@@ -24,6 +24,20 @@
     padding: 0.5rem; /* Inner padding for the form */
 }
 
+/* Different color states */
+.blue-form .chat-form {
+    background-color: #004ea2; /* Blue */
+}
+
+.red-form .chat-form {
+    background-color: #910000; /* Red */
+}
+
+.green-form .chat-form {
+    background-color: #00721b; /* Green */
+}
+
+
 /* Input field styling */
 .chat-input {
     flex-grow: 1; /* Makes the input expand to fill available space */
@@ -41,17 +55,13 @@
     color: #a1a1a1; /* Light gray placeholder text */
 }
 
-.chat-input:hover {
-    color: #ffffff;
-}
-
 /* Submit button styling */
 .chat-submit-button {
     padding: 0.5rem 1rem;
     border-radius: 25px; /* Fully rounded button */
     font-size: 1rem;
     font-weight: bold;
-    background-color: #555555; /* Slightly lighter than form background */
+    background-color:transparent; /* Slightly lighter than form background */
     color: white; /* White text for contrast */
     cursor: pointer;
     border: none; /* Removes button border */
@@ -60,7 +70,8 @@
 
 /* Submit button hover effect */
 .chat-submit-button:hover {
-    background-color: #666666; /* Lighter hover effect */
+    background-color: #ffffff; /* Lighter hover effect */
+    color: black;
 }
 
 /* Submit button focus styles */

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "./InputForm.css";
 
-const InputForm = ({ onSend }) => {
+const InputForm = ({ onSend, formColor }) => {
   const [message, setMessage] = useState("");
 
   const handleSubmit = (e) => {
@@ -13,7 +13,7 @@ const InputForm = ({ onSend }) => {
   };
 
   return (
-    <div className="chat-input-container">
+    <div className={`chat-input-container ${formColor}`}>
       <form onSubmit={handleSubmit} className="chat-form">
         <input
           type="text"
