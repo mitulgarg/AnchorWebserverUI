@@ -39,16 +39,18 @@ const Agent = () => {
     <div>
       <NavHead />
       {/* Static Background */}
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
+      <div className="d-flex justify-content-center align-items-center mt-custom">
         {/* Motion applied to the card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75 }}
+          style={{ marginTop: '80px' }}
+          
         >
           <div className={`agent-card ${formColor}`}> 
 
-          <Card style={{ height: '700px', width: '800px'}} className={`w-180 max-w-md p-4 rounded-3 bg-black shadow-lg`}>
+          <Card style={{ height: '700px', width: '1000px'}} className={`w-180 max-w-md p-4 rounded-3 bg-black shadow-lg`}>
             
             <Card.Body className="d-flex flex-column gap-3">
 
@@ -63,7 +65,13 @@ const Agent = () => {
 
             </div>
               </div>
-              <div className="d-flex justify-content-center gap-2">
+
+              <motion.div
+          initial={{ opacity: 0, y: 80 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1 }}
+        >
+              <div className="d-flex justify-content-center" style={{ gap: '0.5rem' }}>
 
                 <button className="agent-button-blue" onClick={() => handleButtonClick("blue-form", "Let's Setup your End-to-End CI/CD Pipeline!")}>
                 CI/CD Setup
@@ -71,11 +79,13 @@ const Agent = () => {
               <button className="agent-button-red" onClick={() => handleButtonClick("red-form", "Time to Modify/Create Resources!")}>
                 Modify Resources
               </button>
-              <button className="agent-button-green" onClick={() => handleButtonClick("green-form", "You have selected to Observe Existing Setups!")}>
+              <button className="agent-button-green" onClick={() => handleButtonClick("green-form", "Observability for Existing Setups!")}>
                 Observability
               </button>
 
               </div>
+
+              </motion.div>
               <div className="mt-auto">
               <InputForm formColor={formColor}/>
               </div>

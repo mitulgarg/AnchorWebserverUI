@@ -7,9 +7,7 @@
 .chat-input-container {
     display: flex;
     justify-content: center;
-    background-color: #3a3a3a; /* Matches the card background */
-    border-top: 0.5px solid #3a3a3a; /* Subtle border at the top */
-    border-radius: 25px;
+
 }
 
 /* Styling the form */
@@ -52,7 +50,9 @@
 
 /* Placeholder styling */
 .chat-input::placeholder {
-    color: #a1a1a1; /* Light gray placeholder text */
+    
+    font-size: large;
+    color: #ffffff; /* Light gray placeholder text */
 }
 
 /* Submit button styling */
