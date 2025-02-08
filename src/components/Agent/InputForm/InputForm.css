@@ -1,62 +1,69 @@
 /* Container for the input form */
+.chat-input {
+    border: none !important;
+
+}
+
 .chat-input-container {
     display: flex;
     justify-content: center;
-    padding: 0.1rem;
     background-color: #3a3a3a; /* Matches the card background */
     border-top: 0.5px solid #3a3a3a; /* Subtle border at the top */
+    border-radius: 25px;
 }
 
 /* Styling the form */
 .chat-form {
-    width: 100%;
-    max-width: 800px; /* Makes the form responsive */
-    background-color: #3a3a3a; /* Matches the background */
-    border: none;
-    border-radius: 25px; /* Fully curved edges */
-    padding: 0.5rem;
     display: flex;
-    align-items: center; /* Centers content vertically */
-    gap: 0.5rem; /* Adds space between input and button */
+    align-items: center;
+    gap: 0.5rem; /* Space between input and button */
+    width: 100%;
+    max-width: 800px; /* Responsive width */
+    background-color: #444444; /* Slightly lighter than the background */
+    border-radius: 25px; /* Rounded edges */
+    padding: 0.5rem; /* Inner padding for the form */
 }
 
 /* Input field styling */
 .chat-input {
-    flex-grow: 1; /* Makes the input expand to available space */
-    border: none; /* Removes border */
-    border-radius: 25px; /* Matches the form curvature */
-    padding: 0.5rem 1rem; /* Inner spacing */
-    font-size: 1rem; /* Slightly larger font size */
+    flex-grow: 1; /* Makes the input expand to fill available space */
+    /* padding: 0.5rem 1rem; Inner spacing */
+    font-size: 1rem; /* Font size */
+    background-color: transparent; /* Matches form background */
+    border: none; /* Removes the border */
     outline: none; /* Removes focus outline */
-    background-color: #3a3a3a; /* Matches form background */
     color: white; /* White text for contrast */
+    border-radius: 25px; /* Ensures rounded input field matches form */
 }
 
+/* Placeholder styling */
 .chat-input::placeholder {
     color: #a1a1a1; /* Light gray placeholder text */
 }
 
+.chat-input:hover {
+    color: #ffffff;
+}
 
 /* Submit button styling */
 .chat-submit-button {
     padding: 0.5rem 1rem;
-    border: none; /* Removes button border */
-    border-radius: 25px; /* Matches the form curvature */
+    border-radius: 25px; /* Fully rounded button */
     font-size: 1rem;
     font-weight: bold;
-    background-color: #3a3a3a; /* Matches form background */
+    background-color: #555555; /* Slightly lighter than form background */
     color: white; /* White text for contrast */
     cursor: pointer;
+    border: none; /* Removes button border */
     transition: background-color 0.3s ease;
 }
 
 /* Submit button hover effect */
 .chat-submit-button:hover {
-    background-color: #504e4e; /* Slightly lighter hover effect */
+    background-color: #666666; /* Lighter hover effect */
 }
 
 /* Submit button focus styles */
 .chat-submit-button:focus {
-    outline: none;
-    box-shadow: 0 0 4px rgba(114, 116, 117, 0.5); /* Subtle glow */
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.5); /* Subtle glow */
 }

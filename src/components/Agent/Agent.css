@@ -19,16 +19,25 @@
     background-color: #ffffff;
     color: rgb(0, 0, 0);
   }
+  .text-secondary {
+    display: flex; /* Use flexbox for alignment */
+    align-items: center; /* Align items vertically in the center */
+}
 
 .chatbot-logo {
-    height: 44px; /* Slightly larger height for zoom effect */
-    width: 44px; /* Slightly larger width for zoom effect */
-    border-radius: 100%; /* Makes the image fully circular */
+    height: 44px; /* Circle size */
+    width: 44px;
+    border-radius: 100%; /* Makes it fully circular */
     object-fit: cover; /* Ensures the image doesn't distort */
     transition: transform 0.3s ease; /* Smooth zoom effect on hover */
-  }
-  
-  .chatbot-logo:hover {
+}
+
+.chatbot-logo:hover {
     transform: scale(1.1); /* Slightly zooms in the image on hover */
-  }
+}
+
+.ms-3 {
+    margin-left: 1rem; /* Space between the image and text */
+}
+
   

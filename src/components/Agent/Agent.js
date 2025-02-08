@@ -32,14 +32,14 @@ const Agent = () => {
             <Card.Body className="d-flex flex-column gap-3">
 
               <div className="h-64 overflow-auto p-3 bg-black rounded shadow-sm">
-                <div className="text-secondary small">
-                  <img
-                    className="chatbot-logo"
-                    src="/ChatBot-Logo.png"
-                    alt="ChatBot Logo"
-                  />
-    <span className="ms-3 text-white fs-5"> How can I assist you today?</span>
-                </div>
+              <div className="text-secondary small d-flex align-items-center">
+    <img
+        className="chatbot-logo"
+        src="/ChatBot-Logo.png"
+        alt="ChatBot Logo"
+    />
+    <span className="ms-3 text-white fs-4">Hello, I am aCube! How can I assist you today?</span>
+</div>
               </div>
 
 
