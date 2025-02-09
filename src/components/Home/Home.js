@@ -11,15 +11,29 @@ function Home() {
   return (
     <div>
         <NavHead />
-
-        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.75 }}
+          style={{ marginTop: '65px' }}
+          
+        >
         <div className="home">
         <div className="content-container">
-        <h1>Welcome to Auto Anchor</h1>
+        <h1 className='h1-style'>Welcome to Auto Anchor</h1>
+
+        <img 
+                                src="TransparentWhiteLogo1.png" 
+                                alt="icon"
+                                className='img-class-home' 
+  
+                            />
+
+
+        <h2 className='h2-style'>Your one stop solution for automating your entire End-End DevOps Process</h2>
         <p className="description">
-          Auto Anchor leverages Generative AI to give our users the DevOps Automation they need based just a few customizable inputs! Our Product sets up the entire CI/CD pipeline! This Agentic AI solution generates essential DevOps config files 
-          like Dockerfiles, Jenkinsfiles, requirements.txt and deploys your applications on AWS, utilizing Jenkins for Pipeline creation without any human intervention! 
-          Whether you're setting up local builds or scaling applications with Kubernetes, our platform is built to streamline your workflows and save valuable time.</p>
+        We use Generative AI to automate DevOps infrastructure setups, Pipeline Creations, Modification of resources and Observability of your resources.
+        What typically takes a DevOps engineer 1-2 days, we do in just 5 minutes with a single click, all based on simple natural language inputs.</p>
           <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -27,7 +41,7 @@ function Home() {
         >
       <Link className=" text-white text-decoration-none" to={`/acube`}>
               <button className="button-home">
-                Setup Your CI/CD Pipeline Now <FontAwesomeIcon icon={faArrowRight} /> 
+                Meet aCube <FontAwesomeIcon icon={faArrowRight} /> 
               </button>
         </Link>
         <motion.div
@@ -40,7 +54,7 @@ function Home() {
         </motion.div>
         </div>
         </div>
- 
+        </motion.div>
     </div>
   );
 }

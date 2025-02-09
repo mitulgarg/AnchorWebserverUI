@@ -14,7 +14,10 @@ const Agent = () => {
   const [greeting, setGreeting] = useState("Hello, I am aCube! How can I assist you today?");
   const [showGreeting, setShowGreeting] = useState(true); // State for fade animation
 
-  const handleButtonClick = (color, description) => {
+  const [activeButton, setActiveButton] = useState(null); // Track the active button
+
+
+  const handleButtonClick = (color, description, buttonName) => {
     setFormColor(color);
 
     // Fade out the current greeting
@@ -24,7 +27,9 @@ const Agent = () => {
     setTimeout(() => {
       setGreeting(description);
       setShowGreeting(true);
-    }, 220); // Match the fade-out duration (adjust as needed)
+    }, 220);
+    setActiveButton(buttonName);   // Match the fade-out duration (adjust as needed)
+  
   };
 
 
@@ -73,18 +78,20 @@ const Agent = () => {
         >
               <div className="d-flex justify-content-center" style={{ gap: '0.5rem' }}>
 
-                <button className="agent-button-blue" onClick={() => handleButtonClick("blue-form", "Let's Setup your End-to-End CI/CD Pipeline!")}>
+                <button className={`agent-button-blue ${activeButton === 'blue' ? 'active' : ''}`} onClick={() => handleButtonClick("blue-form", "Let's Setup your End-to-End CI/CD Pipeline!", 'blue')}>
                 CI/CD Setup
               </button>
-              <button className="agent-button-red" onClick={() => handleButtonClick("red-form", "Time to Modify/Create Resources!")}>
+              <button className={`agent-button-red ${activeButton === 'red' ? 'active' : ''}`} 
+              onClick={() => 
+              handleButtonClick("red-form", 
+                                "Time to Modify/Create Resources!", 
+                                'red')}>
                 Modify Resources
               </button>
-              <button className="agent-button-green" onClick={() => handleButtonClick("green-form", "Observability for Existing Setups!")}>
+              <button className={`agent-button-green ${activeButton === 'green' ? 'active' : ''}`} onClick={() => handleButtonClick("green-form", "Observability for Existing Setups!", 'green')}>
                 Observability
               </button>
-
               </div>
-
               </motion.div>
               <div className="mt-auto">
               <InputForm formColor={formColor}/>
