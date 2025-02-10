@@ -1,21 +1,36 @@
 .home-container {
-    display: flex;
-    justify-content: center; /* Center horizontally */
-    align-items: center; /* Center vertically */
-    min-height: 88.7vh; /* Make sure it takes the full viewport height */
-    background-color: #f8f9fa; /* Optional: Add a subtle background color */
-  }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh; /* Full height of the viewport */
+  background-color: transparent; /* Light background color */
+  padding: 10px;
+  text-align: center;
+}
 
 .card-container {
-    display: flex; /* Enables horizontal stacking */
-    flex-wrap: wrap; /* Allows wrapping to the next line if necessary */
-    gap: 10px; /* Space between the cards */
-    justify-content: center; 
-  }
+  display: flex; /* Enables horizontal stacking */
+  flex-wrap: nowrap; /* Prevent wrapping to the next line */
+  gap: 10px; /* Space between the cards */
+  justify-content: center; /* Center all cards */
+  padding: 3%; /* Reduce padding inside the container */
+  padding-top: 2%; /* Reduce space between header and cards */
+  max-width: 100%; /* Allow it to span the full width of the container */
+  margin: 0 auto;
+  background-color: black;
+  border-radius: 3%;
+}
+
   
+  .header-card {
+    color:'white';
+    margin-top: 6%;
+  }
   .pipeline-card {
-    flex: 0 1 calc(25% - 5px); /* Each card takes up 25% of the width (4 cards per row) */
-    max-width: 165px; /* Optional: Maximum width for each card */
+    flex: 0 1 calc(20% - 10px); /* Adjust to make the cards fit better, 5 cards per row ideally */
+    max-width: 200px; /* Increase max width for better sizing */
+    min-width: 180px; /* Ensure consistent minimum size for all cards */
     box-sizing: border-box; /* Ensures padding is included in width calculations */
   }
 
@@ -42,3 +57,4 @@
   background-color: #ffffff;
   color: rgb(0, 0, 0);
 }
+

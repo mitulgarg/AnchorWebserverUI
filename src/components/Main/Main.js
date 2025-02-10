@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import NavHead from "../Home/NavHead/NavHead.js";
 import axios from "axios";
+import { motion } from "framer-motion";
 
 
 const Main = () => {
@@ -131,21 +132,26 @@ const Main = () => {
 
   
   return (
-    <div><NavHead />
+    <div>
+    <NavHead />
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.75 }}
+      style={{ marginTop: '65px' }}
+      
+    >
+    <div className="home-container">
+    <div className="content-container">
+    
+    {/* <div><NavHead />
     <div className="home-container">
       
-      <div className="container">
+      <div className="container"> */}
           <div className="row justify-content-center">
             <div className="col-14 text-center">
 
-            <div className="back-button">
-            <Link className=" text-white text-decoration-none" to={`/home`}>
-              <button className="button-position">
-              <FontAwesomeIcon icon={faArrowLeft} /> Home
-              </button>
-            </Link>
-            </div>
-    <h1>Setting up DevOps Pipeline... </h1>
+    <h1 className="header-card" style={{color:'white'}}>aCube is Setting up your CI/CD Pipeline... </h1>
     <animated.div style={props}>  
     <div className="card-container">
         {cardData.map((data, index) => (
@@ -164,12 +170,12 @@ const Main = () => {
       <animated.div style={props}> 
        {allTasksValidated && (
                 <div className="success-message">
-                  <h2>CI/CD Pipeline automatically setup!</h2>
+                  <h2 style={{color:'white'}}>CI/CD Pipeline automatically setup!</h2>
                 </div>
               )}
 </animated.div> 
     </div></div></div>
-    </div></div>
+    </div> </motion.div></div>
   ); 
 };
 
