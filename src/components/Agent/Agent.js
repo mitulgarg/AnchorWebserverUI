@@ -25,6 +25,34 @@ const Agent = () => {
   };
 
 
+  const handleSend = async (message) => {
+    try {
+      const response = await fetch("http://localhost:8000/process_input", { // Replace with your API endpoint
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: message, formColor: formColor }), // Send message and formColor
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json(); // Try to parse error response
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.detail || response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log("Response from server:", data);
+      // Process the response from the server (e.g., update the chat window)
+      setGreeting(data.response || "Message sent successfully!"); // Example: update greeting
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Handle errors (e.g., display an error message to the user)
+      setGreeting("Error sending message. Please try again.");
+    }
+  };
+
+
+
   const handleButtonClick = (color, greetingText, buttonName) => {
     setFormColor(color);
     setShowGreeting(false);
@@ -94,7 +122,7 @@ const Agent = () => {
         ))}
       </div>
                 <div className="mt-auto">
-                  <InputForm formColor={formColor} />
+                  <InputForm onSend={handleSend} formColor={formColor} /> {/* Pass handleSend as onSend prop */}
                 </div>
               </Card.Body>
             </Card>
