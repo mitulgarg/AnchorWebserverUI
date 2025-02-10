@@ -7,98 +7,97 @@ import Button from "react-bootstrap/Button";
 import { Link } from 'react-router-dom';
 import InputForm from './InputForm/InputForm.js';
 
-
 const Agent = () => {
   const [query, setQuery] = useState("");
   const [formColor, setFormColor] = useState("");
   const [greeting, setGreeting] = useState("Hello, I am aCube! How can I assist you today?");
-  const [showGreeting, setShowGreeting] = useState(true); // State for fade animation
+  const [showGreeting, setShowGreeting] = useState(true);
+  const [activeButton, setActiveButton] = useState(null);
+  const [descriptionText, setDescriptionText] = useState("");
+  const [showDescription, setShowDescription] = useState(false);
+  const [descriptionList, setDescriptionList] = useState([]); // Define descriptionList HERE
 
-  const [activeButton, setActiveButton] = useState(null); // Track the active button
 
-
-  const handleButtonClick = (color, description, buttonName) => {
-    setFormColor(color);
-
-    // Fade out the current greeting
-    setShowGreeting(false);
-
-    // After the fade-out is complete, update the greeting and fade it back in
-    setTimeout(() => {
-      setGreeting(description);
-      setShowGreeting(true);
-    }, 220);
-    setActiveButton(buttonName);   // Match the fade-out duration (adjust as needed)
-  
+  const descriptions = {  // Store descriptions in an object
+    'blue-form': " Please tell me some of these key inputs...\n1. Your cloud provider and preferred region\n2. Your Service type (EC2/EC2+EKS)\n3. Your Local Environment name\n4. Your project path",
+    'red-form': "Please tell me some of these key inputs...\n1. Your Project Path and environment\n 2.Your desired change\n",
+    'green-form': "Please tell me some of these key inputs... \n1. Your Project Name\n2.What type of Analytics do you want to see?"
   };
 
 
-  const handleSearch = () => {
-    if (query) {
-      console.log(query);
-    }
+  const handleButtonClick = (color, greetingText, buttonName) => {
+    setFormColor(color);
+    setShowGreeting(false);
+    setTimeout(() => {
+      setGreeting(greetingText);
+      setShowGreeting(true);
+    }, 220);
+    setActiveButton(buttonName);
+    setShowDescription(true); // Always show the description
+
+    setDescriptionText(descriptions[color] || ""); // Set description based on color
+    setDescriptionList(descriptions[color].split('\n') || []); // Use descriptionList here
+
   };
 
 
   return (
     <div>
       <NavHead />
-      {/* Static Background */}
       <div className="d-flex justify-content-center align-items-center mt-custom">
-        {/* Motion applied to the card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75 }}
           style={{ marginTop: '80px' }}
-          
         >
-          <div className={`agent-card ${formColor}`}> 
+          <div className={`agent-card ${formColor}`}>
+            <Card style={{ height: '700px', width: '1000px' }} className={`w-180 max-w-md p-4 rounded-3 bg-black shadow-lg`}>
+              <Card.Body className="d-flex flex-column gap-3">
+                <div className="h-64 overflow-auto p-3 bg-black rounded shadow-sm">
+                  <div className="text-secondary small d-flex align-items-center">
+                    <img
+                      className="chatbot-logo"
+                      src="/ChatBot-Logo.png"
+                      alt="ChatBot Logo"
+                    />
+                    <span className={`ms-3 text-white fs-4 ${showGreeting ? 'fade-in' : 'fade-out'}`}>{greeting}</span>
+                  </div>
+                </div>
 
-          <Card style={{ height: '700px', width: '1000px'}} className={`w-180 max-w-md p-4 rounded-3 bg-black shadow-lg`}>
-            
-            <Card.Body className="d-flex flex-column gap-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 80 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1 }}
+                >
+                  <div className="d-flex justify-content-center" style={{ gap: '0.5rem' }}>
+                    <button className={`agent-button-blue ${activeButton === 'blue' ? 'active' : ''}`} 
+                    onClick={() => handleButtonClick("blue-form", "Let's Setup your End-to-End CI/CD Pipeline!", 'blue')}>
+                      CI/CD Setup
+                    </button>
+                    <button className={`agent-button-red ${activeButton === 'red' ? 'active' : ''}`} 
+                    onClick={() => handleButtonClick("red-form", "Time to Modify/Create Resources!", 'red')}>
+                      Modify Resources
+                    </button>
+                    <button className={`agent-button-green ${activeButton === 'green' ? 'active' : ''}`} 
+                    onClick={() => handleButtonClick("green-form", "Observability for Existing Setups!", 'green')}>
+                      Observability
+                    </button>
+                  </div>
+                </motion.div>
 
-              <div className="h-64 overflow-auto p-3 bg-black rounded shadow-sm">
-              <div className="text-secondary small d-flex align-items-center">
-                <img
-                    className="chatbot-logo"
-                    src="/ChatBot-Logo.png"
-                    alt="ChatBot Logo"
-                />
-     <span className={`ms-3 text-white fs-4 ${showGreeting ? 'fade-in' : 'fade-out'}`}>{greeting}</span>
-
-            </div>
-              </div>
-
-              <motion.div
-          initial={{ opacity: 0, y: 80 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1 }}
-        >
-              <div className="d-flex justify-content-center" style={{ gap: '0.5rem' }}>
-
-                <button className={`agent-button-blue ${activeButton === 'blue' ? 'active' : ''}`} onClick={() => handleButtonClick("blue-form", "Let's Setup your End-to-End CI/CD Pipeline!", 'blue')}>
-                CI/CD Setup
-              </button>
-              <button className={`agent-button-red ${activeButton === 'red' ? 'active' : ''}`} 
-              onClick={() => 
-              handleButtonClick("red-form", 
-                                "Time to Modify/Create Resources!", 
-                                'red')}>
-                Modify Resources
-              </button>
-              <button className={`agent-button-green ${activeButton === 'green' ? 'active' : ''}`} onClick={() => handleButtonClick("green-form", "Observability for Existing Setups!", 'green')}>
-                Observability
-              </button>
-              </div>
-              </motion.div>
-              <div className="mt-auto">
-              <InputForm formColor={formColor}/>
-              </div>
-            </Card.Body>
-
-          </Card>
+                <div className="agent-description">
+        {showDescription && descriptionList.map((paragraph, index) => (
+          <p key={`${paragraph}-${index}`} className="fade-in-desc">
+            {paragraph}
+          </p>
+        ))}
+      </div>
+                <div className="mt-auto">
+                  <InputForm formColor={formColor} />
+                </div>
+              </Card.Body>
+            </Card>
           </div>
         </motion.div>
       </div>

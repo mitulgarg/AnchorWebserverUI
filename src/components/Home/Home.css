@@ -43,6 +43,10 @@
 
 
   .button-home {
+    display: flex;
+    align-items: center; /* Vertically center content */
+    justify-content: center; /* Horizontally center content */
+    gap: 0.5rem;
     height: 50px;
     width: 200px; 
     background-color: black;

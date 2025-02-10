@@ -177,10 +177,34 @@
 
 .fade-in {
   opacity: 1;
-  transition: opacity 0.3s ease-in-out; /* Adjust duration as needed */
+  transition: opacity 0.8s ease-in-out; /* Adjust duration as needed */
 }
 
 .fade-out {
   opacity: 0;
-  transition: opacity 0.3s ease-in-out; /* Match fade-in duration */
+  transition: opacity 0.8s ease-in-out; /* Match fade-in duration */
+}
+
+
+.agent-description {
+  text-align: left;
+  margin-left: 30%;
+
+  font-size: 1.2rem;
+  color: white;
+  margin-bottom: 0;
+  margin-top: 7%;
+  /* Remove opacity and transition from here */
+  /* opacity: 0;  */
+  /* transition: opacity 2s ease-in-out; */
+}
+
+.fade-in-desc {
+  opacity: 0; /* Initially hidden */
+  animation: fadeIn 1s ease-in-out forwards; /* Use animation */
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
