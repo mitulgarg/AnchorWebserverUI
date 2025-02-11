@@ -1,6 +1,7 @@
+
+
 import React, { useState } from "react";
 import "./InputForm.css";
-
 const InputForm = ({ onSend, formColor }) => {
   const [message, setMessage] = useState("");
 
