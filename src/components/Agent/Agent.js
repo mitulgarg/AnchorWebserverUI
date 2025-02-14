@@ -11,7 +11,7 @@ import { Link } from "react-router-dom"; // Import Link
 const Agent = () => {
   const [formColor, setFormColor] = useState("");
   const [greetings, setGreetings] = useState([
-    "Hi, this is Acube!",
+    "Hello, I am Acube! Let's Get Started!",
     "Click here to choose the repository you want to deploy",
     "Select your Virtual Environment:",
     "How many people will be using this application each day?",
@@ -30,7 +30,10 @@ const Agent = () => {
   const handleFolderSelect = async () => {
     const folderPath = await window.showDirectoryPicker();
     setSelectedFolder(folderPath.name);
-    proceedToNextStep();
+    // Add a delay before proceeding to the next step
+    setTimeout(() => {
+      proceedToNextStep();
+    }, 2000); // 2-second delay
   };
 
   const proceedToNextStep = () => {
@@ -54,24 +57,25 @@ const Agent = () => {
 
   const handleInputSend = (message) => {
     if (currentStep === 3) {
-      // Handle 4th question response
       setOutputMessage(
         "For this use case, an EC2 Instance (t2.micro) will be good enough."
       );
+  
       setTimeout(() => {
-        setOutputMessage(""); // Clear output
-        proceedToNextStep(); // Show 5th question
-      }, 4000);
+        setOutputMessage(""); // Clear output message after 3 seconds
+        proceedToNextStep(); // Move to the next greeting
+      }, 3000);
     } else if (currentStep === 4) {
-      // Handle 5th question response
       setOutputMessage(`Your application domain will be: ${message}`);
+  
       setTimeout(() => {
-        setOutputMessage(""); // Clear output
+        setOutputMessage(""); // Clear output message after 3 seconds
         setUserInput(""); // Clear user input
-        proceedToNextStep(); // Move to the next step
-      }, 4000);
+        proceedToNextStep(); // Move to the next greeting
+      }, 3000);
     }
   };
+  
 
   const handleButtonClick = (color, buttonName) => {
     setFormColor(color);
@@ -131,7 +135,9 @@ const Agent = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="mt-3"
+                // className="mt-3"
+                className="d-flex justify-content-center align-items-center"
+                style={{ padding: "3%" }} // Full height to center vertically
               >
                 <button
                   className="btn btn-sm btn-outline-light"
@@ -139,11 +145,14 @@ const Agent = () => {
                 >
                   <FontAwesomeIcon icon={faFolderOpen} /> Select Folder
                 </button>
+                <br></br>
                 {selectedFolder && (
+                  <div style={{"marginLeft":"5%"}}>
                   <p className="text-white mt-2">
                     Selected Folder:{" "}
                     <span className="text-info">{selectedFolder}</span>
                   </p>
+                  </div>
                 )}
               </motion.div>
             )}
@@ -154,9 +163,12 @@ const Agent = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               className="mt-3"
+              style={{marginTop:'50%',marginLeft:'25%'}}
             >
+              <div style={{"marginTop":'10%'}}></div>
               <select
                 className="form-select mt-2"
+                style={{width:'60%'}}
                 value={selectedEnvironment}
                 onChange={handleEnvironmentChange}
               >
@@ -182,7 +194,7 @@ const Agent = () => {
       )}
     </div>
 
-    <div className="mt-3 text-info">{outputMessage}</div>
+    <div className="mt-3 text-info" style={{marginLeft:"5%"}}>{outputMessage}</div>
 
     {currentStep < greetings.length ? (
       showButtons && (
@@ -237,11 +249,16 @@ const Agent = () => {
       </motion.div>
     )}
 
-    <div className="mt-auto">
-      {currentStep < greetings.length && (
-        <InputForm onSend={handleInputSend} formColor={formColor} />
-      )}
-    </div>
+<div className="mt-auto">
+  {currentStep < greetings.length && (
+    <InputForm
+      onSend={handleInputSend}
+      formColor={formColor}
+      disabled={currentStep < 3} // Disable form until Step 4
+    />
+  )}
+</div>
+
   </Card.Body>
 </Card>
 

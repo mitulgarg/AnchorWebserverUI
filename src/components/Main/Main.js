@@ -42,8 +42,8 @@ const Main = () => {
       1: "http://127.0.0.1:8000/analyzer",
       2: "http://127.0.0.1:8000/creds", // Example endpoint for step 2
       3: "http://127.0.0.1:8000/filegen",
-      4: "http://127.0.0.1:8000/infra",
-      5: "http://127.0.0.1:8000/analyzer",
+      4: "http://127.0.0.1:8000/analyzer",
+      5: "http://127.0.0.1:8000/infra",
     };
 
     const endpoint = endpointMapping[id];
@@ -102,7 +102,8 @@ const Main = () => {
       {
         id: 2,
         task: `Retrieval of Credentials`,
-        desc: `Retrieving AWS and ${formData.scmProvider} credentials.`,
+        // desc: `Retrieving AWS and ${formData.scmProvider} credentials.`,
+        desc: `Retrieving AWS and Github credentials.`,
       },
       {
         id: 3,
@@ -111,8 +112,9 @@ const Main = () => {
       },
       {
         id: 4,
-        task: `Setting up ${formData.cloudProvider} ${formData.serviceType}`,
-        desc: `Setting up Infra on ${formData.cloudProvider}`,
+        // task: `Setting up ${formData.cloudProvider} ${formData.serviceType}`,
+        task: `Setting up AWS EC2`,
+        desc: `Setting up Infra on AWS`,
       },
       {
         id: 5,
