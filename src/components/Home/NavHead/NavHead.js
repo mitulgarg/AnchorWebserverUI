@@ -12,7 +12,7 @@ const NavHead = () => {
                     <Container fluid>
                         <Link 
                             className="img-class" 
-                            to={`/home`}
+                            to={`/`}
                         >
                             <img 
                                 src="TransparentWhiteLogo1.png" 

@@ -7,6 +7,7 @@ import InputForm from "./InputForm/InputForm.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFolderOpen, faArrowRight } from "@fortawesome/free-solid-svg-icons"; // Import faArrowRight
 import { Link } from "react-router-dom"; // Import Link
+import { useEffect } from "react";
 
 const Agent = () => {
   const [formColor, setFormColor] = useState("");
@@ -23,9 +24,24 @@ const Agent = () => {
   const [selectedFolder, setSelectedFolder] = useState("");
   const [showEnvironmentQuestion, setShowEnvironmentQuestion] = useState(false);
   const [selectedEnvironment, setSelectedEnvironment] = useState("");
+  const [environmentOptions, setEnvironmentOptions] = useState([]);
   const [userInput, setUserInput] = useState(""); // For storing user input
   const [outputMessage, setOutputMessage] = useState(""); // For dynamic responses
   const [showButtons, setShowButtons] = useState(true);
+
+  useEffect(() => {
+      const fetchEnvironments = async () => {
+          try {
+              const response = await fetch("http://localhost:8000/environments");
+              const data = await response.json();
+              setEnvironmentOptions(Object.entries(data));
+          } catch (error) {
+              console.error("Failed to fetch environments:", error);
+          }
+      };
+
+      fetchEnvironments();
+  }, []);
 
   const handleFolderSelect = async () => {
     const folderPath = await window.showDirectoryPicker();
@@ -157,35 +173,37 @@ const Agent = () => {
               </motion.div>
             )}
 
-          {currentStep === 2 && showEnvironmentQuestion && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mt-3"
-              style={{marginTop:'50%',marginLeft:'25%'}}
-            >
-              <div style={{"marginTop":'10%'}}></div>
-              <select
-                className="form-select mt-2"
-                style={{width:'60%'}}
-                value={selectedEnvironment}
-                onChange={handleEnvironmentChange}
-              >
-                <option value="" disabled>
-                  Choose an environment...
-                </option>
-                <option value="Python venv">base (Python 3.12.4)</option>
-                <option value="Python 3.11.9">Python 3.11.9</option>
-                <option value="miniforge3">miniforge3 (Python 3.9.16)</option>
-              </select>
-              {selectedEnvironment && (
-                <p className="text-info mt-2">
-                  Selected Environment: {selectedEnvironment}
-                </p>
-              )}
-            </motion.div>
-          )}
+            {currentStep === 2 && showEnvironmentQuestion && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="mt-3"
+                    style={{ marginTop: "50%", marginLeft: "25%" }}
+                >
+                    <div style={{ marginTop: "10%" }}></div>
+                    <select
+                        className="form-select mt-2"
+                        style={{ width: "60%" }}
+                        value={selectedEnvironment}
+                        onChange={handleEnvironmentChange}
+                    >
+                        <option value="" disabled>
+                            Choose an environment...
+                        </option>
+                        {environmentOptions.map(([path, version]) => (
+                            <option key={path} value={path}>
+                                {`${version} (${path})`}
+                            </option>
+                        ))}
+                    </select>
+                    {selectedEnvironment && (
+                        <p className="text-info mt-2">
+                            Selected Environment: {environmentOptions.find(([path]) => path === selectedEnvironment)?.[1]} ({selectedEnvironment})
+                        </p>
+                    )}
+                </motion.div>
+            )}
         </>
       ) : (
         <div className="text-center">
