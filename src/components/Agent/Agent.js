@@ -24,7 +24,7 @@ const Agent = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [showGreeting, setShowGreeting] = useState(true);
   const [activeButton, setActiveButton] = useState(null);
-  const [selectedFolder, setSelectedFolder] = useState("");
+  const [selectedFolder1, setSelectedFolder] = useState("");
   const [showEnvironmentQuestion, setShowEnvironmentQuestion] = useState(false);
   const [selectedEnvironment, setSelectedEnvironment] = useState("");
   const [environmentOptions, setEnvironmentOptions] = useState([]);
@@ -52,32 +52,41 @@ const Agent = () => {
       const folderName = dirHandle.name; // Get folder name
       setSelectedFolder(folderName);
   
-      // Fetch absolute path from backend
+      let absolutePath = null;
+    let attempts = 0;
+    const maxAttempts = 10; // Limit retries to prevent infinite loops
+
+    while (!absolutePath && attempts < maxAttempts) {
       const response = await fetch("http://localhost:8000/get-folder-path", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderName }),
       });
-  
-    const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data.detail || "Failed to retrieve folder path");
+      const data = await response.json();
+
+      if (response.ok && data.absolutePath) {
+        absolutePath = data.absolutePath;
+        console.log("Absolute folder path received:", absolutePath);
+      } else {
+        console.warn("Retrying folder path retrieval... Attempt:", attempts + 1);
+        await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5000ms before retrying
+      }
+      
+      attempts++;
     }
 
-    console.log("Absolute folder path received:", data.absolutePath); // Log absolute path
-
-    // Set the absolute path first
-    setSelectedFolder(data.absolutePath);
-
-    // Introduce a delay AFTER setting the state
-    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2-second delay
-
-      proceedToNextStep();
-    } catch (error) {
-      console.error("Error selecting folder:", error.message);
+    if (!absolutePath) {
+      throw new Error("Failed to retrieve folder path after multiple attempts");
     }
-  };
+
+    setSelectedFolder(absolutePath);
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    proceedToNextStep();
+  } catch (error) {
+    console.error("Error selecting folder:", error.message);
+  }
+};
   
   
   const proceedToNextStep = () => {
@@ -190,11 +199,11 @@ const Agent = () => {
                   <FontAwesomeIcon icon={faFolderOpen} /> Select Folder
                 </button>
                 <br></br>
-                {selectedFolder && (
+                {selectedFolder1 && (
                   <div style={{"marginLeft":"5%"}}>
                   <p className="text-white mt-2">
                     Selected Folder:{" "}
-                    <span className="text-info">{selectedFolder}</span>
+                    <span className="text-info">{selectedFolder1}</span>
                   </p>
                   </div>
                 )}
