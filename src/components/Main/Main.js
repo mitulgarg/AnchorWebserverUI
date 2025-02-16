@@ -145,11 +145,6 @@ const Main = () => {
     >
     <div className="home-container">
     <div className="content-container">
-    
-    {/* <div><NavHead />
-    <div className="home-container">
-      
-      <div className="container"> */}
           <div className="row justify-content-center">
             <div className="col-14 text-center">
 
