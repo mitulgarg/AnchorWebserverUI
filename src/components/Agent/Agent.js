@@ -8,6 +8,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFolderOpen, faArrowRight } from "@fortawesome/free-solid-svg-icons"; // Import faArrowRight
 import { Link } from "react-router-dom"; // Import Link
 
+
+
+
 const Agent = () => {
   const [formColor, setFormColor] = useState("");
   const [greetings, setGreetings] = useState([
@@ -28,14 +31,39 @@ const Agent = () => {
   const [showButtons, setShowButtons] = useState(true);
 
   const handleFolderSelect = async () => {
-    const folderPath = await window.showDirectoryPicker();
-    setSelectedFolder(folderPath.name);
-    // Add a delay before proceeding to the next step
-    setTimeout(() => {
-      proceedToNextStep();
-    }, 2000); // 2-second delay
-  };
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      const folderName = dirHandle.name; // Get folder name
+      setSelectedFolder(folderName);
+  
+      // Fetch absolute path from backend
+      const response = await fetch("http://localhost:8000/get-folder-path", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderName }),
+      });
+  
+    const data = await response.json();
 
+    if (!response.ok) {
+      throw new Error(data.detail || "Failed to retrieve folder path");
+    }
+
+    console.log("Absolute folder path received:", data.absolutePath); // Log absolute path
+
+    // Set the absolute path first
+    setSelectedFolder(data.absolutePath);
+
+    // Introduce a delay AFTER setting the state
+    await new Promise((resolve) => setTimeout(resolve, 2000)); // 2-second delay
+
+      proceedToNextStep();
+    } catch (error) {
+      console.error("Error selecting folder:", error.message);
+    }
+  };
+  
+  
   const proceedToNextStep = () => {
     setShowGreeting(false);
     setTimeout(() => {
