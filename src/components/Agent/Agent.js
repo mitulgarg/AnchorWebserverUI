@@ -1,324 +1,490 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./Agent.css";
 import NavHead from "../Home/NavHead/NavHead.js";
 import { motion } from "framer-motion";
 import Card from "react-bootstrap/Card";
-import InputForm from "./InputForm/InputForm.js";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFolderOpen, faArrowRight } from "@fortawesome/free-solid-svg-icons"; // Import faArrowRight
-import { Link } from "react-router-dom"; // Import Link
-import { useEffect } from "react";
-
-
-
+import { 
+  faArrowRight, 
+  faPaperPlane, 
+  faHistory, 
+  faMessage,
+  faTimes
+} from "@fortawesome/free-solid-svg-icons";
+import { Link } from "react-router-dom";
 
 const Agent = () => {
+  // States for chat and UI
   const [formColor, setFormColor] = useState("");
-  const [greetings, setGreetings] = useState([
-    "Hello, I am Acube! Let's Get Started!",
-    "Click here to choose the repository you want to deploy",
-    "Select your Virtual Environment:",
-    "How many people will be using this application each day?",
-    "What will your domain name for your application be?",
-  ]);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [showGreeting, setShowGreeting] = useState(true);
   const [activeButton, setActiveButton] = useState(null);
-  const [selectedFolder1, setSelectedFolder] = useState("");
-  const [showEnvironmentQuestion, setShowEnvironmentQuestion] = useState(false);
-  const [selectedEnvironment, setSelectedEnvironment] = useState("");
-  const [environmentOptions, setEnvironmentOptions] = useState([]);
-  const [userInput, setUserInput] = useState(""); // For storing user input
-  const [outputMessage, setOutputMessage] = useState(""); // For dynamic responses
-  const [showButtons, setShowButtons] = useState(true);
+  const [userInput, setUserInput] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDeployReady, setIsDeployReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState(Date.now());
+  
+  // Chat history and messages
+  const [messages, setMessages] = useState([
+    { sender: "bot", text: "Hello, I am Acube! Let's Get Started!" }
+  ]);
+  const [chatHistory, setChatHistory] = useState([]);
+  
+  // Tools execution flow
+  const [currentToolFlow, setCurrentToolFlow] = useState([]);
+  const [currentToolIndex, setCurrentToolIndex] = useState(0);
+  const [toolQuestions, setToolQuestions] = useState({});
+  
+  // Refs
+  const chatContainerRef = useRef(null);
+  const inputRef = useRef(null);
 
+  // Load chat history from localStorage on component mount
   useEffect(() => {
-      const fetchEnvironments = async () => {
-          try {
-              const response = await fetch("http://localhost:8000/environments");
-              const data = await response.json();
-              setEnvironmentOptions(Object.entries(data));
-          } catch (error) {
-              console.error("Failed to fetch environments:", error);
-          }
-      };
-
-      fetchEnvironments();
+    const savedHistory = localStorage.getItem('acube-chat-history');
+    if (savedHistory) {
+      setChatHistory(JSON.parse(savedHistory));
+    }
   }, []);
 
-  const handleFolderSelect = async () => {
-    try {
-      const dirHandle = await window.showDirectoryPicker();
-      const folderName = dirHandle.name; // Get folder name
-      setSelectedFolder(folderName);
-  
-      let absolutePath = null;
-    let attempts = 0;
-    const maxAttempts = 10; // Limit retries to prevent infinite loops
+  // Save current chat to history whenever messages change
+  useEffect(() => {
+    if (messages.length > 1) { // Only update if there's more than the initial message
+      updateChatInHistory();
+    }
+  }, [messages]);
 
-    while (!absolutePath && attempts < maxAttempts) {
-      const response = await fetch("http://localhost:8000/get-folder-path", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderName }),
-      });
+  useEffect(() => {
+    // Scroll to the bottom of chat when new messages are added
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-      const data = await response.json();
+  // Save chat history to localStorage whenever it changes
+  useEffect(() => {
+    if (chatHistory.length > 0) {
+      localStorage.setItem('acube-chat-history', JSON.stringify(chatHistory));
+    }
+  }, [chatHistory]);
 
-      if (response.ok && data.absolutePath) {
-        absolutePath = data.absolutePath;
-        console.log("Absolute folder path received:", absolutePath);
-      } else {
-        console.warn("Retrying folder path retrieval... Attempt:", attempts + 1);
-        await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5000ms before retrying
-      }
+  const updateChatInHistory = () => {
+    // Generate a title based on the conversation content
+    let title = "New Conversation";
+    
+    // Look for a user message to use as title
+    const userMessages = messages.filter(m => m.sender === "user");
+    if (userMessages.length > 0) {
+      // Use the first user message as the title
+      title = userMessages[0].text.substring(0, 30);
+      if (userMessages[0].text.length > 30) title += "...";
+    }
+    
+    const updatedChat = {
+      id: currentChatId,
+      title: title,
+      messages: [...messages],
+      timestamp: new Date().toISOString(),
+      serviceType: activeButton ? 
+                  (activeButton === "blue" ? "CI/CD Setup" : 
+                   activeButton === "red" ? "Modify Resources" : 
+                   "Observability") : 
+                  "General"
+    };
+    
+    setChatHistory(prevHistory => {
+      // Check if this chat already exists in history
+      const existingIndex = prevHistory.findIndex(chat => chat.id === currentChatId);
       
-      attempts++;
-    }
-
-    if (!absolutePath) {
-      throw new Error("Failed to retrieve folder path after multiple attempts");
-    }
-
-    setSelectedFolder(absolutePath);
-    await new Promise((resolve) => setTimeout(resolve, 4000));
-    proceedToNextStep();
-  } catch (error) {
-    console.error("Error selecting folder:", error.message);
-  }
-};
-  
-  
-  const proceedToNextStep = () => {
-    setShowGreeting(false);
-    setTimeout(() => {
-      if (currentStep < greetings.length - 1) {
-        const nextStep = currentStep + 1;
-        setCurrentStep(nextStep);
-
-        // Show environment dropdown on the second step
-        if (nextStep === 2) {
-          setShowEnvironmentQuestion(true);
-        }
+      if (existingIndex >= 0) {
+        // Update existing chat
+        const newHistory = [...prevHistory];
+        newHistory[existingIndex] = updatedChat;
+        return newHistory;
       } else {
-        // If no more greetings, clear the card content
-        setCurrentStep(greetings.length);
+        // Add new chat
+        return [...prevHistory, updatedChat];
       }
-      setShowGreeting(true);
-    }, 220);
+    });
   };
 
-  const handleInputSend = (message) => {
-    if (currentStep === 3) {
-      setOutputMessage(
-        "For this use case, an EC2 Instance (t2.micro) will be good enough."
-      );
-  
-      setTimeout(() => {
-        setOutputMessage(""); // Clear output message after 3 seconds
-        proceedToNextStep(); // Move to the next greeting
-      }, 3000);
-    } else if (currentStep === 4) {
-      setOutputMessage(`Your application domain will be: ${message}`);
-  
-      setTimeout(() => {
-        setOutputMessage(""); // Clear output message after 3 seconds
-        setUserInput(""); // Clear user input
-        proceedToNextStep(); // Move to the next greeting
-      }, 3000);
-    }
+  const addMessage = (sender, text) => {
+    setMessages(prevMessages => [...prevMessages, { sender, text }]);
   };
   
-
   const handleButtonClick = (color, buttonName) => {
     setFormColor(color);
     setActiveButton(buttonName);
-    setShowButtons(false);
-    proceedToNextStep(); // Move to "Click here to choose the repository" step
+    
+    // Add message for service selection
+    addMessage("user", `Selected service: ${buttonName === "blue" ? "CI/CD Setup" : 
+                          buttonName === "red" ? "Modify Resources" : "Observability"}`);
+    
+    // Bot asks for user input
+    addMessage("bot", "Please describe what you'd like to do with your application, and I'll help you set up the process:");
   };
-
-  const handleEnvironmentChange = (event) => {
-    setSelectedEnvironment(event.target.value);
-    if (event.target.value) {
-      setTimeout(() => {
-        setShowEnvironmentQuestion(false); // Hide dropdown
-        proceedToNextStep(); // Show the next greeting
-      }, 2000); // 2-second delay
+  
+  const handleSendMessage = async () => {
+    if (!userInput.trim()) return;
+    
+    const message = userInput;
+    setUserInput("");
+    addMessage("user", message);
+    setIsLoading(true);
+    
+    // Check if we're awaiting confirmation for tool execution
+    if (awaitingConfirmation) {
+      if (message.toLowerCase().includes("yes") || message.toLowerCase().includes("confirm") || message.toLowerCase().includes("proceed")) {
+        setAwaitingConfirmation(false);
+        startToolFlow();
+      } else {
+        addMessage("bot", "Would you like to modify the plan? Please describe your requirements again.");
+        setAwaitingConfirmation(false);
+      }
     }
+    // Check if we're in the middle of the tool flow
+    else if (currentToolFlow.length > 0 && currentToolIndex < currentToolFlow.length) {
+      // Handle tool flow questions
+      const currentTool = currentToolFlow[currentToolIndex];
+      await validateToolAnswer(currentTool, message);
+    }
+    // Handle first user input - get CICD plan
+    else if (activeButton) {
+      await getCICDPlan(message);
+    }
+    
+    setIsLoading(false);
+  };
+  
+  const getCICDPlan = async (userRequest) => {
+    try {
+      addMessage("bot", "Generating plan...");
+      
+      const response = await fetch(`http://localhost:8000/acube/cicdplan?user_request=${encodeURIComponent(userRequest)}&service_type=${activeButton === "blue" ? "cicd" : activeButton === "red" ? "resource" : "observability"}`);
+      
+      const data = await response.json();
+      
+      if (data["Tool Execution Order"]) {
+        setCurrentToolFlow(data["Tool Execution Order"]);
+        setToolQuestions(data["Tool Questions"]);
+        
+        // Show reasoning and tool execution order
+        addMessage("bot", "Here's my plan:\n\n" + data["Reasoning Steps"]);
+        
+        // Display the ordered list of tools
+        const toolsList = data["Tool Execution Order"].map((tool, index) => 
+          `${index + 1}. ${tool}`
+        ).join('\n');
+        
+        addMessage("bot", `I'll execute the following tools in order:\n${toolsList}\n\nWould you like to proceed with this plan? (Yes/No)`);
+        
+        // Set awaiting confirmation
+        setAwaitingConfirmation(true);
+      } else if (data["Credential Error"]) {
+        addMessage("bot", "There seems to be an issue with your AWS credentials. Please make sure they're configured correctly.");
+      } else {
+        addMessage("bot", "Couldn't generate a plan. Please try again with more details.");
+      }
+    } catch (error) {
+      console.error("Error getting plan:", error);
+      addMessage("bot", "Failed to get plan. Please check if the server is running.");
+    }
+  };
+  
+  const startToolFlow = () => {
+    if (currentToolFlow.length > 0) {
+      const firstTool = currentToolFlow[0];
+      const question = toolQuestions[firstTool];
+      
+      addMessage("bot", question || `Please provide information for ${firstTool}:`);
+      setCurrentToolIndex(0);
+    }
+  };
+  
+  const validateToolAnswer = async (toolName, answer) => {
+    try {
+      addMessage("bot", `Processing your answer for ${toolName}...`);
+      
+      const response = await fetch(`http://localhost:8000/acube/answervalidator?tool_name=${toolName}&answer=${encodeURIComponent(answer)}`);
+      
+      const data = await response.json();
+      
+      if (data.variables) {
+        addMessage("bot", `Great! I've validated your input for ${toolName}.`);
+        
+        // Move to next tool if available
+        if (currentToolIndex < currentToolFlow.length - 1) {
+          const nextIndex = currentToolIndex + 1;
+          const nextTool = currentToolFlow[nextIndex];
+          const nextQuestion = toolQuestions[nextTool];
+          
+          setCurrentToolIndex(nextIndex);
+          addMessage("bot", nextQuestion || `Please provide information for ${nextTool}:`);
+        } else {
+          // Complete the setup
+          await completeSetup();
+        }
+      } else if (data.retry_exception) {
+        addMessage("bot", data.retry_exception);
+      } else {
+        addMessage("bot", `There was an issue with your answer. Please try again.`);
+      }
+    } catch (error) {
+      console.error("Error validating answer:", error);
+      addMessage("bot", "Failed to validate your answer. Please try again.");
+    }
+  };
+  
+  const completeSetup = async () => {
+    try {
+      addMessage("bot", "Setting up your application...");
+      
+      // Here you would actually call the necessary endpoints to set up the application
+      // For example, analyzer, dockerfile-gen, etc.
+      // For now, we'll just simulate success
+      
+      setTimeout(() => {
+        addMessage("bot", "Success! I've set up your pipeline, generated all necessary files, and prepared your infrastructure.");
+        
+        // Set deploy readiness
+        setIsDeployReady(true);
+      }, 2000);
+    } catch (error) {
+      console.error("Error completing setup:", error);
+      addMessage("bot", `There was an error during setup: ${error.message}. Please try again.`);
+    }
+  };
+  
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
+    }
+  };
+  
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+  
+  const loadChatHistory = (chatEntry) => {
+    // Start a new conversation based on the history
+    setCurrentChatId(chatEntry.id);
+    setMessages(chatEntry.messages);
+    
+    // Reset the current state to match the loaded chat
+    setCurrentToolFlow([]);
+    setCurrentToolIndex(0);
+    setToolQuestions({});
+    setAwaitingConfirmation(false);
+    
+    // Try to restore service type
+    if (chatEntry.serviceType === "CI/CD Setup") {
+      setActiveButton("blue");
+      setFormColor("blue-form");
+    } else if (chatEntry.serviceType === "Modify Resources") {
+      setActiveButton("red");
+      setFormColor("red-form");
+    } else if (chatEntry.serviceType === "Observability") {
+      setActiveButton("green");
+      setFormColor("green-form");
+    }
+    
+    // Check if this conversation was completed
+    const lastMessage = chatEntry.messages[chatEntry.messages.length - 1];
+    if (lastMessage && lastMessage.text.includes("Success! I've set up your pipeline")) {
+      setIsDeployReady(true);
+    } else {
+      setIsDeployReady(false);
+    }
+    
+    setIsSidebarOpen(false);
+  };
+  
+  const startNewChat = () => {
+    setCurrentChatId(Date.now());
+    setMessages([{ sender: "bot", text: "Hello, I am Acube! Let's Get Started!" }]);
+    setActiveButton(null);
+    setFormColor("");
+    setCurrentToolFlow([]);
+    setCurrentToolIndex(0);
+    setToolQuestions({});
+    setAwaitingConfirmation(false);
+    setIsDeployReady(false);
+    setIsSidebarOpen(false);
+  };
+  
+  const deleteChatHistory = (id, e) => {
+    e.stopPropagation(); // Prevent loading the chat when clicking delete
+    
+    setChatHistory(prevHistory => {
+      const newHistory = prevHistory.filter(chat => chat.id !== id);
+      localStorage.setItem('acube-chat-history', JSON.stringify(newHistory));
+      return newHistory;
+    });
   };
 
   return (
-    <div>
+    <div className="agent-fullscreen">
       <NavHead />
-      <div className="d-flex justify-content-center align-items-center mt-custom">
+      
+      {/* Sidebar Toggle Button */}
+      <button 
+        className="sidebar-toggle-btn"
+        onClick={toggleSidebar}
+      >
+        <FontAwesomeIcon icon={isSidebarOpen ? faTimes : faHistory} />
+      </button>
+      
+      {/* Sidebar */}
+      <div className={`chat-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <h3>Chat History</h3>
+          <button className="new-chat-btn" onClick={startNewChat}>
+            New Chat
+          </button>
+        </div>
+        <div className="sidebar-content">
+          {chatHistory.length === 0 ? (
+            <p className="no-history">No chat history yet</p>
+          ) : (
+            <ul className="history-list">
+              {chatHistory.map(chat => (
+                <li key={chat.id} onClick={() => loadChatHistory(chat)} className="history-item">
+                  <div className="history-item-content">
+                    <FontAwesomeIcon icon={faMessage} className="history-icon" />
+                    <div className="history-details">
+                      <span className="history-title">{chat.title}</span>
+                      <span className="history-date">
+                        {new Date(chat.timestamp).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                  <button 
+                    className="delete-history-btn" 
+                    onClick={(e) => deleteChatHistory(chat.id, e)}
+                    title="Delete conversation"
+                  >
+                    <FontAwesomeIcon icon={faTimes} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      
+      {/* Main Chat Area */}
+      <div className={`agent-main ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75 }}
-          style={{ marginTop: "80px" }}
+          className="agent-container"
         >
-          <div className={`agent-card ${formColor}`}>
-          <Card
-  style={{ height: "700px", width: "1000px" }}
-  className="w-180 max-w-md p-4 rounded-3 bg-black shadow-lg"
->
-  <Card.Body className="d-flex flex-column gap-3">
-    <div className="h-64 overflow-auto p-3 bg-black rounded shadow-sm">
-      {currentStep < greetings.length ? (
-        <>
-          <div className="text-secondary small d-flex align-items-center">
-            <img
-              className="chatbot-logo"
-              src="/ChatBot-Logo.png"
-              alt="ChatBot Logo"
-            />
-            <span
-              className={`ms-3 text-white fs-4 ${
-                showGreeting ? "fade-in" : "fade-out"
-              }`}
-            >
-              {greetings[currentStep]}
-            </span>
-          </div>
-
-          {activeButton === "blue" &&
-            currentStep === 1 &&
-            !showEnvironmentQuestion && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                // className="mt-3"
-                className="d-flex justify-content-center align-items-center"
-                style={{ padding: "3%" }} // Full height to center vertically
-              >
-                <button
-                  className="btn btn-sm btn-outline-light"
-                  onClick={handleFolderSelect}
-                >
-                  <FontAwesomeIcon icon={faFolderOpen} /> Select Folder
-                </button>
-                <br></br>
-                {selectedFolder1 && (
-                  <div style={{"marginLeft":"5%"}}>
-                  <p className="text-white mt-2">
-                    Selected Folder:{" "}
-                    <span className="text-info">{selectedFolder1}</span>
-                  </p>
+          <Card className="agent-card">
+            <Card.Body className="agent-card-body">
+              {/* Chat Messages Area */}
+              <div ref={chatContainerRef} className="chat-messages-container">
+                {messages.map((message, index) => (
+                  <div 
+                    key={index} 
+                    className={`message ${message.sender === "bot" ? "bot-message" : "user-message"}`}
+                  >
+                    {message.sender === "bot" && (
+                      <div className="bot-avatar">
+                        <img src="/ChatBot-Logo.png" alt="Acube" />
+                      </div>
+                    )}
+                    <div className="message-content">
+                      {message.text.split('\n').map((text, i) => (
+                        <p key={i}>{text}</p>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                
+                {isLoading && (
+                  <div className="bot-message">
+                    <div className="bot-avatar">
+                      <img src="/ChatBot-Logo.png" alt="Acube" />
+                    </div>
+                    <div className="typing-indicator">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
                   </div>
                 )}
-              </motion.div>
-            )}
-
-            {currentStep === 2 && showEnvironmentQuestion && (
+              </div>
+              
+              {/* Button Options (initial) */}
+              {messages.length === 1 && !activeButton && (
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
-                    className="mt-3"
-                    style={{ marginTop: "50%", marginLeft: "25%" }}
+                  initial={{ opacity: 0, y: 80 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1 }}
+                  className="button-options"
                 >
-                    <div style={{ marginTop: "10%" }}></div>
-                    <select
-                        className="form-select mt-2"
-                        style={{ width: "60%" }}
-                        value={selectedEnvironment}
-                        onChange={handleEnvironmentChange}
-                    >
-                        <option value="" disabled>
-                            Choose an environment...
-                        </option>
-                        {environmentOptions.map(([path, version]) => (
-                            <option key={path} value={path}>
-                                {`${version} (${path})`}
-                            </option>
-                        ))}
-                    </select>
-                    {selectedEnvironment && (
-                        <p className="text-info mt-2">
-                            Selected Environment: {environmentOptions.find(([path]) => path === selectedEnvironment)?.[1]} ({selectedEnvironment})
-                        </p>
-                    )}
+                  <button
+                    className={`agent-button-blue ${activeButton === "blue" ? "active" : ""}`}
+                    onClick={() => handleButtonClick("blue-form", "blue")}
+                  >
+                    CI/CD Setup
+                  </button>
+                  <button
+                    className={`agent-button-red ${activeButton === "red" ? "active" : ""}`}
+                    onClick={() => handleButtonClick("red-form", "red")}
+                  >
+                    Modify Resources
+                  </button>
+                  <button
+                    className={`agent-button-green ${activeButton === "green" ? "active" : ""}`}
+                    onClick={() => handleButtonClick("green-form", "green")}
+                  >
+                    Observability
+                  </button>
                 </motion.div>
-            )}
-        </>
-      ) : (
-        <div className="text-center">
-          <p className="text-white fs-4">You are all set!</p>
-        </div>
-      )}
-    </div>
-
-    <div className="mt-3 text-info" style={{marginLeft:"5%"}}>{outputMessage}</div>
-
-    {currentStep < greetings.length ? (
-      showButtons && (
-        <motion.div
-          initial={{ opacity: 0, y: 80 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1 }}
-        >
-          <div
-            className="d-flex justify-content-center"
-            style={{ gap: "0.5rem" }}
-          >
-            <button
-              className={`agent-button-blue ${
-                activeButton === "blue" ? "active" : ""
-              }`}
-              onClick={() => handleButtonClick("blue-form", "blue")}
-            >
-              CI/CD Setup
-            </button>
-            <button
-              className={`agent-button-red ${
-                activeButton === "red" ? "active" : ""
-              }`}
-              onClick={() => handleButtonClick("red-form", "red")}
-            >
-              Modify Resources
-            </button>
-            <button
-              className={`agent-button-green ${
-                activeButton === "green" ? "active" : ""
-              }`}
-              onClick={() => handleButtonClick("green-form", "green")}
-            >
-              Observability
-            </button>
-          </div>
-        </motion.div>
-      )
-    ) : (
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mt-auto text-center"
-      >
-        <Link to="/main" className="text-white text-decoration-none">
-          <button className="button-home">
-            Let's Go! <FontAwesomeIcon icon={faArrowRight} />
-          </button>
-        </Link>
-      </motion.div>
-    )}
-
-<div className="mt-auto">
-  {currentStep < greetings.length && (
-    <InputForm
-      onSend={handleInputSend}
-      formColor={formColor}
-      disabled={currentStep < 3} // Disable form until Step 4
-    />
-  )}
-</div>
-
-  </Card.Body>
-</Card>
-
-{/* Closing tag for the conditional rendering */}
-          </div> {/* Closing tag for agent-card */}
+              )}
+              
+              {/* Deploy Button (when ready) */}
+              {isDeployReady && (
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="deploy-button-container"
+                >
+                  <Link to="/main" className="deploy-button-link">
+                    <button className="deploy-button">
+                      Let's Go! <FontAwesomeIcon icon={faArrowRight} />
+                    </button>
+                  </Link>
+                </motion.div>
+              )}
+              
+              {/* Input Form */}
+              {activeButton && !isDeployReady && (
+                <div className="chat-input-container">
+                  <input
+                    type="text"
+                    ref={inputRef}
+                    className={`chat-input ${formColor}`}
+                    placeholder="Type your message..."
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    disabled={isLoading}
+                  />
+                  <button
+                    className={`send-button ${formColor}`}
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !userInput.trim()}
+                  >
+                    <FontAwesomeIcon icon={faPaperPlane} />
+                  </button>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
         </motion.div>
       </div>
     </div>
@@ -326,5 +492,3 @@ const Agent = () => {
 };
 
 export default Agent;
-
-
