@@ -12,6 +12,7 @@ import {
   faTimes
 } from "@fortawesome/free-solid-svg-icons";
 import { Link } from "react-router-dom";
+import { faCog, faSave, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 
 const Agent = () => {
   // States for chat and UI
@@ -334,6 +335,16 @@ const Agent = () => {
         <FontAwesomeIcon icon={isSidebarOpen ? faTimes : faHistory} />
       </button>
       
+          <button 
+      className="settings-toggle-btn"
+      title="Settings"
+    >
+      <Link to="/settings">
+        <FontAwesomeIcon icon={faCog} />
+      </Link>
+    </button>
+
+
       {/* Sidebar */}
       <div className={`chat-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">

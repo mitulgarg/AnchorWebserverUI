@@ -1,0 +1,106 @@
+.settings-fullscreen {
+    display: flex;
+    flex-direction: column;
+    height: 98vh;
+    background-color:black;
+  }
+  
+  .settings-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1;
+    padding: 20px;
+  }
+  
+  .settings-card {
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
+  .settings-header {
+    background-color: #f8f9fa;
+    text-align: center;
+    padding: 15px;
+  }
+  
+  .settings-card-body {
+    padding: 20px;
+  }
+  
+  .key-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .key-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .input-with-toggle {
+    display: flex;
+    align-items: center;
+  }
+  
+  .key-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .toggle-visibility-btn {
+    background: none;
+    border: none;
+    margin-left: -40px;
+    color: #888;
+    cursor: pointer;
+  }
+  
+  .save-keys-btn {
+    background-color: #004c9d;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .save-status {
+    text-align: center;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  
+  .save-status.success {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .save-status.error {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  
+  .settings-toggle-btn {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 1000;
+  }
+  
+  .settings-toggle-btn a {
+    color: #333;
+  }
