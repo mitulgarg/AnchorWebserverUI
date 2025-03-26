@@ -25,6 +25,9 @@ const Agent = () => {
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(Date.now());
   
+  // New state to store validated tool responses
+  const [validatedResponses, setValidatedResponses] = useState({});
+  
   // Chat history and messages
   const [messages, setMessages] = useState([
     { sender: "bot", text: "Hello, I am Acube! Let's Get Started!" }
@@ -68,6 +71,13 @@ const Agent = () => {
       localStorage.setItem('acube-chat-history', JSON.stringify(chatHistory));
     }
   }, [chatHistory]);
+
+  // Handle key press for input
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
+    }
+  };
 
   const updateChatInHistory = () => {
     // Generate a title based on the conversation content
@@ -213,6 +223,12 @@ const Agent = () => {
       if (data.variables) {
         addMessage("bot", `Great! I've validated your input for ${toolName}.`);
         
+        // Store the validated response
+        setValidatedResponses(prev => ({
+          ...prev,
+          [toolName]: data.variables
+        }));
+        
         // Move to next tool if available
         if (currentToolIndex < currentToolFlow.length - 1) {
           const nextIndex = currentToolIndex + 1;
@@ -240,25 +256,100 @@ const Agent = () => {
     try {
       addMessage("bot", "Setting up your application...");
       
-      // Here you would actually call the necessary endpoints to set up the application
-      // For example, analyzer, dockerfile-gen, etc.
-      // For now, we'll just simulate success
+      // Get the list of validated tools from the keys of validatedResponses
+      const validatedTools = Object.keys(validatedResponses);
       
-      setTimeout(() => {
-        addMessage("bot", "Success! I've set up your pipeline, generated all necessary files, and prepared your infrastructure.");
+      // Create an object to store API call results
+      const apiResults = {};
+      
+      // Dynamically generate and call APIs based on validated tools
+      for (const tool of validatedTools) {
+        let apiUrl, params;
         
-        // Set deploy readiness
-        setIsDeployReady(true);
-      }, 2000);
+        switch(tool) {
+          case 'folder-selection':
+          case 'python-environment':
+            apiUrl = 'http://localhost:8000/analyzer';
+            params = {
+              folderPath: validatedResponses['folder-selection'] || '',
+              environment_path: validatedResponses['python-environment'] || ''
+            };
+            break;
+          
+          case 'app-type':
+          case 'python-version':
+          case 'working-directory':
+          case 'entry-point':
+            apiUrl = 'http://localhost:8000/filegen';
+            params = {
+              app_type: validatedResponses['app-type'] || '',
+              python_version: validatedResponses['python-version'] || '',
+              work_dir: validatedResponses['working-directory'] || '',
+              entrypoint: validatedResponses['entry-point'] || '',
+              folder_path: validatedResponses['folder-selection'] || ''
+            };
+            break;
+          
+          case 'infrastructure':
+            apiUrl = 'http://localhost:8000/infra';
+            params = {
+              work_dir: validatedResponses['working-directory'] || ''
+            };
+            break;
+          
+          default:
+            // Skip any tools without a specific API mapping
+            continue;
+        }
+        
+        try {
+          // Dynamically call the appropriate API
+          const response = await fetch(apiUrl, {
+            method: ['filegen', 'analyzer'].includes(apiUrl.split('/').pop()) ? 'GET' : 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            ...(params && {
+              body: JSON.stringify(params)
+            }),
+            ...(apiUrl.includes('filegen') && {
+              params: new URLSearchParams(params)
+            })
+          });
+          
+          const data = await response.json();
+          apiResults[tool] = data;
+          
+          addMessage("bot", `Successfully processed ${tool}`);
+        } catch (apiError) {
+          console.error(`Error processing ${tool}:`, apiError);
+          addMessage("bot", `Failed to process ${tool}`);
+          // Optionally break or continue based on error handling strategy
+        }
+      }
+      
+      // Check overall success
+      const allSuccessful = Object.values(apiResults).every(result => result.success);
+      
+      if (allSuccessful) {
+        setTimeout(() => {
+          addMessage("bot", "Success! I've set up your pipeline, generated all necessary files, and prepared your infrastructure.");
+          setIsDeployReady(true);
+        }, 2000);
+      } else {
+        addMessage("bot", "There was an issue during setup. Some steps might have failed.");
+        // Optionally log which specific tools failed
+        const failedTools = Object.entries(apiResults)
+          .filter(([_, result]) => !result.success)
+          .map(([tool, _]) => tool);
+        
+        if (failedTools.length > 0) {
+          addMessage("bot", `Failed tools: ${failedTools.join(', ')}`);
+        }
+      }
     } catch (error) {
       console.error("Error completing setup:", error);
       addMessage("bot", `There was an error during setup: ${error.message}. Please try again.`);
-    }
-  };
-  
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSendMessage();
     }
   };
   
@@ -276,6 +367,7 @@ const Agent = () => {
     setCurrentToolIndex(0);
     setToolQuestions({});
     setAwaitingConfirmation(false);
+    setValidatedResponses({}); // Reset validated responses
     
     // Try to restore service type
     if (chatEntry.serviceType === "CI/CD Setup") {
@@ -311,6 +403,7 @@ const Agent = () => {
     setAwaitingConfirmation(false);
     setIsDeployReady(false);
     setIsSidebarOpen(false);
+    setValidatedResponses({}); // Reset validated responses
   };
   
   const deleteChatHistory = (id, e) => {
@@ -335,15 +428,14 @@ const Agent = () => {
         <FontAwesomeIcon icon={isSidebarOpen ? faTimes : faHistory} />
       </button>
       
-          <button 
-      className="settings-toggle-btn"
-      title="Settings"
-    >
-      <Link to="/settings">
-        <FontAwesomeIcon icon={faCog} />
-      </Link>
-    </button>
-
+      <button 
+        className="settings-toggle-btn"
+        title="Settings"
+      >
+        <Link to="/settings">
+          <FontAwesomeIcon icon={faCog} />
+        </Link>
+      </button>
 
       {/* Sidebar */}
       <div className={`chat-sidebar ${isSidebarOpen ? 'open' : ''}`}>
