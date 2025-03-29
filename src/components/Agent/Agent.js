@@ -300,10 +300,10 @@ const Agent = () => {
       
       // Tools to endpoints mapping (enhanced)
       const toolsToEndpoints = {
-        'analyzer': { endpoint: 'analyzer', requiredFields: ['folderPath','environment_path'] },
+        'analyzer': { endpoint: 'analyzer', requiredFields: ['folderPath', 'environment_path'] },
         'dockerfile-gen': { endpoint: 'dockerfile-gen', requiredFields: ['python_version'] },
-        'aws-credentials': { endpoint: 'creds', requiredFields: [] },
-        'infrastructure-config': { endpoint: 'infra', requiredFields: [] },
+        'creds': { endpoint: 'creds', requiredFields: [] }, // Fixed key name
+        'infra': { endpoint: 'infra', requiredFields: [] }, // Fixed key name
         'jenkinsfile-gen': { 
           endpoint: 'jenkinsfile-gen', 
           requiredFields: ['folder_path'] 
@@ -338,12 +338,12 @@ const Agent = () => {
         try {
           // Check if we have all required fields for analyzer
           const requiredFields = ['folderPath'];
-          if (validResponses['environment_path']) {
+          if (validResponses.analyzer?.environment_path) {
             requiredFields.push('environment_path');
           }
-          
+
           const hasAllFields = requiredFields.every(field => 
-            validResponses['folder-selection']?.[field] !== undefined
+            validResponses.analyzer?.[field] !== undefined
           );
           
           if (!hasAllFields) {
@@ -357,8 +357,8 @@ const Agent = () => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              folderPath: validResponses['folder-selection']?.folderPath || '',
-              environment_path: validResponses['folder-selection']?.environment_path || ''
+              folderPath: validResponses.analyzer?.folderPath || '',
+              environment_path: validResponses.analyzer?.environment_path || ''
             })
           });
           
@@ -411,7 +411,7 @@ const Agent = () => {
             `&python_version=${encodeURIComponent(pythonVersion)}` +
             `&work_dir=${encodeURIComponent(workDir)}` +
             `&entrypoint=${encodeURIComponent(entrypoint)}` +
-            `&folder_path=${encodeURIComponent(validResponses['folder-selection']?.folderPath || '')}`
+            `&folder_path=${encodeURIComponent(validResponses.analyzer?.folderPath || '')}`
           );
           
           const dockerfileData = await dockerfileResponse.json();
