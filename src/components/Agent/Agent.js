@@ -25,8 +25,12 @@ const Agent = () => {
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(Date.now());
   
+  
   // New state to store validated tool responses
   const [validatedResponses, setValidatedResponses] = useState({});
+  
+  // Keep track of all tools that were validated - new state
+  const [validatedTools, setValidatedTools] = useState([]);
   
   // Chat history and messages
   const [messages, setMessages] = useState([
@@ -71,6 +75,11 @@ const Agent = () => {
       localStorage.setItem('acube-chat-history', JSON.stringify(chatHistory));
     }
   }, [chatHistory]);
+
+  // Add a useEffect to monitor validatedResponses changes
+  useEffect(() => {
+    console.log("validatedResponses updated:", validatedResponses);
+  }, [validatedResponses]);
 
   // Handle key press for input
   const handleKeyPress = (e) => {
@@ -145,6 +154,7 @@ const Agent = () => {
     
     // Check if we're awaiting confirmation for tool execution
     if (awaitingConfirmation) {
+      console.log("Processing confirmation response");
       if (message.toLowerCase().includes("yes") || message.toLowerCase().includes("confirm") || message.toLowerCase().includes("proceed")) {
         setAwaitingConfirmation(false);
         startToolFlow();
@@ -157,10 +167,12 @@ const Agent = () => {
     else if (currentToolFlow.length > 0 && currentToolIndex < currentToolFlow.length) {
       // Handle tool flow questions
       const currentTool = currentToolFlow[currentToolIndex];
+      console.log(`Processing answer for tool: ${currentTool}`);
       await validateToolAnswer(currentTool, message);
     }
     // Handle first user input - get CICD plan
     else if (activeButton) {
+      console.log("Getting CICD plan");
       await getCICDPlan(message);
     }
     
@@ -174,10 +186,16 @@ const Agent = () => {
       const response = await fetch(`http://localhost:8000/acube/cicdplan?user_request=${encodeURIComponent(userRequest)}&service_type=${activeButton === "blue" ? "cicd" : activeButton === "red" ? "resource" : "observability"}`);
       
       const data = await response.json();
+      console.log("CICD plan response:", data);
       
       if (data["Tool Execution Order"]) {
+        // Store the tool execution order
         setCurrentToolFlow(data["Tool Execution Order"]);
         setToolQuestions(data["Tool Questions"]);
+        
+        // IMPORTANT: Also reset the validated tools list when starting a new plan
+        setValidatedTools([]);
+        setValidatedResponses({});
         
         // Show reasoning and tool execution order
         addMessage("bot", "Here's my plan:\n\n" + data["Reasoning Steps"]);
@@ -207,6 +225,7 @@ const Agent = () => {
       const firstTool = currentToolFlow[0];
       const question = toolQuestions[firstTool];
       
+      console.log(`Starting tool flow with first tool: ${firstTool}`);
       addMessage("bot", question || `Please provide information for ${firstTool}:`);
       setCurrentToolIndex(0);
     }
@@ -216,18 +235,25 @@ const Agent = () => {
     try {
       addMessage("bot", `Processing your answer for ${toolName}...`);
       
-      const response = await fetch(`http://localhost:8000/acube/answervalidator?tool_name=${toolName}&answer=${encodeURIComponent(answer)}`);
+      const response = await fetch(
+        `http://localhost:8000/acube/answervalidator?tool_name=${toolName}&answer=${encodeURIComponent(answer)}`
+      );
       
       const data = await response.json();
       
       if (data.variables) {
         addMessage("bot", `Great! I've validated your input for ${toolName}.`);
         
-        // Store the validated response
-        setValidatedResponses(prev => ({
-          ...prev,
+        // Create updated copies of state
+        const updatedResponses = {
+          ...validatedResponses,
           [toolName]: data.variables
-        }));
+        };
+        const newValidatedTools = [...validatedTools, toolName];
+        
+        // Update state
+        setValidatedResponses(updatedResponses);
+        setValidatedTools(newValidatedTools);
         
         // Move to next tool if available
         if (currentToolIndex < currentToolFlow.length - 1) {
@@ -238,8 +264,8 @@ const Agent = () => {
           setCurrentToolIndex(nextIndex);
           addMessage("bot", nextQuestion || `Please provide information for ${nextTool}:`);
         } else {
-          // Complete the setup
-          await completeSetup();
+          // Pass both updated values to completeSetup
+          await completeSetup(updatedResponses, newValidatedTools);
         }
       } else if (data.retry_exception) {
         addMessage("bot", data.retry_exception);
@@ -252,106 +278,273 @@ const Agent = () => {
     }
   };
   
-  const completeSetup = async () => {
+  const completeSetup = async (responses = null, tools = null) => {
     try {
       addMessage("bot", "Setting up your application...");
       
-      // Get the list of validated tools from the keys of validatedResponses
-      const validatedTools = Object.keys(validatedResponses);
+      // Use parameters or fall back to state
+      const validResponses = responses || validatedResponses;
+      const validTools = tools || validatedTools;
       
-      // Create an object to store API call results
+      console.log("Starting completeSetup with:", validResponses, validTools);
+      
+      // Verify we have responses and tools
+      if (Object.keys(validResponses).length === 0 || validTools.length === 0) {
+        console.warn("Missing validated tools or responses");
+        addMessage("bot", "I don't have all the required information to set up your application. Let's try again.");
+        return;
+      }
+      
+      // API call results storage
       const apiResults = {};
       
-      // Dynamically generate and call APIs based on validated tools
-      for (const tool of validatedTools) {
-        let apiUrl, params;
-        
-        switch(tool) {
-          case 'folder-selection':
-          case 'python-environment':
-            apiUrl = 'http://localhost:8000/analyzer';
-            params = {
-              folderPath: validatedResponses['folder-selection'] || '',
-              environment_path: validatedResponses['python-environment'] || ''
-            };
-            break;
-          
-          case 'app-type':
-          case 'python-version':
-          case 'working-directory':
-          case 'entry-point':
-            apiUrl = 'http://localhost:8000/filegen';
-            params = {
-              app_type: validatedResponses['app-type'] || '',
-              python_version: validatedResponses['python-version'] || '',
-              work_dir: validatedResponses['working-directory'] || '',
-              entrypoint: validatedResponses['entry-point'] || '',
-              folder_path: validatedResponses['folder-selection'] || ''
-            };
-            break;
-          
-          case 'infrastructure':
-            apiUrl = 'http://localhost:8000/infra';
-            params = {
-              work_dir: validatedResponses['working-directory'] || ''
-            };
-            break;
-          
-          default:
-            // Skip any tools without a specific API mapping
-            continue;
+      // Tools to endpoints mapping (enhanced)
+      const toolsToEndpoints = {
+        'analyzer': { endpoint: 'analyzer', requiredFields: ['folderPath','environment_path'] },
+        'dockerfile-gen': { endpoint: 'dockerfile-gen', requiredFields: ['python_version'] },
+        'aws-credentials': { endpoint: 'creds', requiredFields: [] },
+        'infrastructure-config': { endpoint: 'infra', requiredFields: [] },
+        'jenkinsfile-gen': { 
+          endpoint: 'jenkinsfile-gen', 
+          requiredFields: ['folder_path'] 
         }
-        
+      };
+      
+      // Determine endpoints to call based on validated tools
+      const endpointsToCall = new Set();
+      validTools.forEach(tool => {
+        if (toolsToEndpoints[tool]) {
+          endpointsToCall.add(toolsToEndpoints[tool].endpoint);
+        }
+      });
+      
+      // First pass: collect all endpoints we need to call
+      // tools.forEach(tool => {
+      //   if (toolsToEndpoints[tool]) {
+      //     endpointsToCall.add(toolsToEndpoints[tool].endpoint);
+      //   }
+      // });
+      
+      console.log("Endpoints to call based on validated tools:", Array.from(endpointsToCall));
+      
+      // Variables to store important values
+      let workDir = '';
+      let entrypoint = '';
+      let appType = '';
+      let pythonVersion = '';
+      
+      // Call analyzer if needed (required for most other endpoints)
+      if (endpointsToCall.has('analyzer')) {
         try {
-          // Dynamically call the appropriate API
-          const response = await fetch(apiUrl, {
-            method: ['filegen', 'analyzer'].includes(apiUrl.split('/').pop()) ? 'GET' : 'POST',
+          // Check if we have all required fields for analyzer
+          const requiredFields = ['folderPath'];
+          if (validResponses['environment_path']) {
+            requiredFields.push('environment_path');
+          }
+          
+          const hasAllFields = requiredFields.every(field => 
+            validResponses['folder-selection']?.[field] !== undefined
+          );
+          
+          if (!hasAllFields) {
+            throw new Error("Missing required fields for analyzer");
+          }
+          
+          addMessage("bot", "Analyzing your project structure...");
+          const analyzerResponse = await fetch("http://localhost:8000/analyzer", {
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            ...(params && {
-              body: JSON.stringify(params)
-            }),
-            ...(apiUrl.includes('filegen') && {
-              params: new URLSearchParams(params)
+            body: JSON.stringify({
+              folderPath: validResponses['folder-selection']?.folderPath || '',
+              environment_path: validResponses['folder-selection']?.environment_path || ''
             })
           });
           
-          const data = await response.json();
-          apiResults[tool] = data;
+          const analyzerData = await analyzerResponse.json();
+          console.log("Analyzer API response:", analyzerData);
+          apiResults['analyzer'] = analyzerData;
           
-          addMessage("bot", `Successfully processed ${tool}`);
+          if (!analyzerData.success) {
+            throw new Error("Project analysis failed");
+          }
+          
+          addMessage("bot", `Project analysis complete! Found app type: ${analyzerData.app_type}`);
+          
+          // Store important values from analyzer response
+          workDir = analyzerData.work_dir;
+          entrypoint = analyzerData.entrypoint;
+          appType = analyzerData.app_type;
+          
+          // Get Python version if needed for dockerfile-gen
+          if (endpointsToCall.has('dockerfile-gen')) {
+            if (validResponses['python-version']?.python_version) {
+              pythonVersion = validResponses['python-version'].python_version;
+            } else {
+              // Fallback to getting Python versions if not provided
+              const pythonVersionsResponse = await fetch(
+                `http://localhost:8000/get-environments?folderPath=${encodeURIComponent(
+                  validResponses['folder-selection']?.folderPath || ''
+                )}`
+              );
+              const pythonVersionsData = await pythonVersionsResponse.json();
+              console.log("Python versions:", pythonVersionsData);
+              
+              pythonVersion = pythonVersionsData && pythonVersionsData.length > 0 ? 
+                            pythonVersionsData[0] : "3.9";
+            }
+          }
         } catch (apiError) {
-          console.error(`Error processing ${tool}:`, apiError);
-          addMessage("bot", `Failed to process ${tool}`);
-          // Optionally break or continue based on error handling strategy
+          console.error("Analyzer API error:", apiError);
+          addMessage("bot", `Error during project analysis: ${apiError.message}`);
+          return;
         }
       }
       
-      // Check overall success
-      const allSuccessful = Object.values(apiResults).every(result => result.success);
-      
-      if (allSuccessful) {
-        setTimeout(() => {
-          addMessage("bot", "Success! I've set up your pipeline, generated all necessary files, and prepared your infrastructure.");
-          setIsDeployReady(true);
-        }, 2000);
-      } else {
-        addMessage("bot", "There was an issue during setup. Some steps might have failed.");
-        // Optionally log which specific tools failed
-        const failedTools = Object.entries(apiResults)
-          .filter(([_, result]) => !result.success)
-          .map(([tool, _]) => tool);
-        
-        if (failedTools.length > 0) {
-          addMessage("bot", `Failed tools: ${failedTools.join(', ')}`);
+      // Call dockerfile-gen if needed and we have required data
+      if (endpointsToCall.has('dockerfile-gen') && appType && workDir && entrypoint) {
+        try {
+          addMessage("bot", "Generating Dockerfile...");
+          const dockerfileResponse = await fetch(
+            `http://localhost:8000/dockerfile-gen?app_type=${encodeURIComponent(appType)}` +
+            `&python_version=${encodeURIComponent(pythonVersion)}` +
+            `&work_dir=${encodeURIComponent(workDir)}` +
+            `&entrypoint=${encodeURIComponent(entrypoint)}` +
+            `&folder_path=${encodeURIComponent(validResponses['folder-selection']?.folderPath || '')}`
+          );
+          
+          const dockerfileData = await dockerfileResponse.json();
+          console.log("Dockerfile generation response:", dockerfileData);
+          apiResults['dockerfile'] = dockerfileData;
+          
+          if (!dockerfileData.success) {
+            throw new Error("Dockerfile generation failed");
+          }
+          
+          addMessage("bot", "Dockerfile generated successfully!");
+        } catch (apiError) {
+          console.error("Dockerfile API error:", apiError);
+          addMessage("bot", `Error generating Dockerfile: ${apiError.message}`);
         }
+      }
+      
+      // Call jenkinsfile-gen if needed
+      // Update the Jenkinsfile-gen section in completeSetup
+      if (endpointsToCall.has('jenkinsfile-gen') && validResponses['jenkinsfile-gen']?.folder_path) {
+        try {
+          addMessage("bot", "Generating Jenkinsfile...");
+          const jenkinsfileResponse = await fetch(
+            `http://localhost:8000/jenkinsfile-gen?folder_path=${encodeURIComponent(
+              validResponses['jenkinsfile-gen'].folder_path // Changed from folder-selection to jenkinsfile-gen
+            )}`
+          );
+
+          if (!jenkinsfileResponse.ok) {
+            throw new Error(`HTTP error! status: ${jenkinsfileResponse.status}`);
+          }
+          
+          const jenkinsfileData = await jenkinsfileResponse.json();
+          console.log("Jenkinsfile generation response:", jenkinsfileData);
+          apiResults['jenkinsfile'] = jenkinsfileData;
+          
+          if (!jenkinsfileData.success) {
+            throw new Error("Jenkinsfile generation failed");
+          }
+          
+          addMessage("bot", "Jenkinsfile generated successfully!");
+        } catch (apiError) {
+          console.error("Jenkinsfile API error:", apiError);
+          addMessage("bot", `Error generating Jenkinsfile: ${apiError.message}`);
+        }
+      }
+      
+      // Call AWS creds if needed
+      if (endpointsToCall.has('creds')) {
+        try {
+          addMessage("bot", "Retrieving AWS credentials...");
+          const credsResponse = await fetch("http://localhost:8000/creds");
+          const credsData = await credsResponse.json();
+          console.log("AWS credentials response:", credsData);
+          apiResults['creds'] = credsData;
+          
+          if (!credsData.success) {
+            throw new Error("Failed to retrieve AWS credentials");
+          }
+          
+          addMessage("bot", "AWS credentials validated!");
+        } catch (apiError) {
+          console.error("AWS credentials API error:", apiError);
+          addMessage("bot", `Error validating AWS credentials: ${apiError.message}`);
+        }
+      }
+      
+      // Call infrastructure if needed
+      if (endpointsToCall.has('infra') && workDir) {
+        try {
+          addMessage("bot", "Generating infrastructure code...");
+          const infraResponse = await fetch(
+            `http://localhost:8000/infra?work_dir=${encodeURIComponent(workDir)}`
+          );
+          
+          const infraData = await infraResponse.json();
+          console.log("Infrastructure generation response:", infraData);
+          apiResults['infra'] = infraData;
+          
+          if (!infraData.success) {
+            throw new Error("Infrastructure generation failed");
+          }
+          
+          addMessage("bot", "Infrastructure code generated successfully!");
+        } catch (apiError) {
+          console.error("Infrastructure API error:", apiError);
+          addMessage("bot", `Error generating infrastructure: ${apiError.message}`);
+        }
+      }
+      
+      // Check if we have any results
+      const calledEndpoints = Object.keys(apiResults);
+      if (calledEndpoints.length > 0) {
+        const allSuccessful = calledEndpoints.every(endpoint => apiResults[endpoint].success);
+        console.log("All API results:", apiResults, "All successful:", allSuccessful);
+        
+        if (allSuccessful) {
+          setTimeout(() => {
+            const completedSteps = calledEndpoints.map(endpoint => {
+              switch(endpoint) {
+                case 'analyzer': return 'project analysis';
+                case 'dockerfile': return 'Dockerfile generation';
+                case 'jenkinsfile': return 'Jenkinsfile generation';
+                case 'creds': return 'AWS credential validation';
+                case 'infra': return 'infrastructure code generation';
+                default: return endpoint;
+              }
+            }).join(', ');
+            
+            addMessage("bot", `Success! I've completed the following steps: ${completedSteps}. Your application setup is ready!`);
+            
+            // Only set deploy ready if we've completed all possible steps
+            const allPossibleEndpoints = new Set(['analyzer', 'dockerfile', 'jenkinsfile', 'creds', 'infra']);
+            if (calledEndpoints.length === allPossibleEndpoints.size) {
+              setIsDeployReady(true);
+            }
+          }, 2000);
+        } else {
+          const failedApis = Object.entries(apiResults)
+            .filter(([_, result]) => !result.success)
+            .map(([api, _]) => api);
+          
+          addMessage("bot", `There was an issue during setup. The following steps failed: ${failedApis.join(', ')}.`);
+        }
+      } else {
+        addMessage("bot", "No setup steps were executed. Please provide the necessary information first.");
       }
     } catch (error) {
       console.error("Error completing setup:", error);
       addMessage("bot", `There was an error during setup: ${error.message}. Please try again.`);
     }
   };
+  
   
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -367,7 +560,8 @@ const Agent = () => {
     setCurrentToolIndex(0);
     setToolQuestions({});
     setAwaitingConfirmation(false);
-    setValidatedResponses({}); // Reset validated responses
+    setValidatedResponses({}); 
+    setValidatedTools([]); // Reset validated tools list
     
     // Try to restore service type
     if (chatEntry.serviceType === "CI/CD Setup") {
@@ -383,7 +577,7 @@ const Agent = () => {
     
     // Check if this conversation was completed
     const lastMessage = chatEntry.messages[chatEntry.messages.length - 1];
-    if (lastMessage && lastMessage.text.includes("Success! I've set up your pipeline")) {
+    if (lastMessage && lastMessage.text.includes("Success! I've")) {
       setIsDeployReady(true);
     } else {
       setIsDeployReady(false);
@@ -403,7 +597,8 @@ const Agent = () => {
     setAwaitingConfirmation(false);
     setIsDeployReady(false);
     setIsSidebarOpen(false);
-    setValidatedResponses({}); // Reset validated responses
+    setValidatedResponses({});
+    setValidatedTools([]); // Reset validated tools list
   };
   
   const deleteChatHistory = (id, e) => {
