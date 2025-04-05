@@ -141,7 +141,7 @@ const Agent = () => {
                           buttonName === "red" ? "Modify Resources" : "Observability"}`);
     
     // Bot asks for user input
-    addMessage("bot", "Please describe what you'd like to do with your application, and I'll help you set up the process:");
+    addMessage("bot", "Please describe what type of application you want to deploy on AWS:");
   };
   
   const handleSendMessage = async () => {
@@ -300,14 +300,12 @@ const Agent = () => {
       
       // Tools to endpoints mapping (enhanced)
       const toolsToEndpoints = {
-        'analyzer': { endpoint: 'analyzer', requiredFields: ['folderPath', 'environment_path'] },
+        'analyzer': { endpoint: 'analyzer', requiredFields: ['folder_path', 'environment_path'] },
         'dockerfile-gen': { endpoint: 'dockerfile-gen', requiredFields: ['python_version'] },
         'creds': { endpoint: 'creds', requiredFields: [] }, // Fixed key name
         'infra': { endpoint: 'infra', requiredFields: [] }, // Fixed key name
-        'jenkinsfile-gen': { 
-          endpoint: 'jenkinsfile-gen', 
-          requiredFields: ['folder_path'] 
-        }
+        'jenkinsfile-gen': { endpoint: 'jenkinsfile-gen', requiredFields: ['folder_path'] },
+        'get-environments': {endpoint: 'get-environments', requiredFields: ['folder_path']}
       };
       
       // Determine endpoints to call based on validated tools
@@ -337,7 +335,7 @@ const Agent = () => {
       if (endpointsToCall.has('analyzer')) {
         try {
           // Check if we have all required fields for analyzer
-          const requiredFields = ['folderPath'];
+          const requiredFields = ['folder_path'];
           if (validResponses.analyzer?.environment_path) {
             requiredFields.push('environment_path');
           }
@@ -357,7 +355,7 @@ const Agent = () => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              folderPath: validResponses.analyzer?.folderPath || '',
+              folder_path: validResponses.analyzer?.folder_path || '',
               environment_path: validResponses.analyzer?.environment_path || ''
             })
           });
@@ -384,8 +382,8 @@ const Agent = () => {
             } else {
               // Fallback to getting Python versions if not provided
               const pythonVersionsResponse = await fetch(
-                `http://localhost:8000/get-environments?folderPath=${encodeURIComponent(
-                  validResponses['folder-selection']?.folderPath || ''
+                `http://localhost:8000/get-environments?folder_path=${encodeURIComponent(
+                  validResponses['folder-selection']?.folder_path || ''
                 )}`
               );
               const pythonVersionsData = await pythonVersionsResponse.json();
@@ -411,7 +409,7 @@ const Agent = () => {
             `&python_version=${encodeURIComponent(pythonVersion)}` +
             `&work_dir=${encodeURIComponent(workDir)}` +
             `&entrypoint=${encodeURIComponent(entrypoint)}` +
-            `&folder_path=${encodeURIComponent(validResponses.analyzer?.folderPath || '')}`
+            `&folder_path=${encodeURIComponent(validResponses.analyzer?.folder_path || '')}`
           );
           
           const dockerfileData = await dockerfileResponse.json();
@@ -450,6 +448,34 @@ const Agent = () => {
           
           if (!jenkinsfileData.success) {
             throw new Error("Jenkinsfile generation failed");
+          }
+          
+          addMessage("bot", "Jenkinsfile generated successfully!");
+        } catch (apiError) {
+          console.error("Jenkinsfile API error:", apiError);
+          addMessage("bot", `Error generating Jenkinsfile: ${apiError.message}`);
+        }
+      }
+
+      if (endpointsToCall.has('get-environments') && validResponses['get-environments']?.folder_path) {
+        try {
+          addMessage("bot", "Getting Python Environments...");
+          const environmentsResponse = await fetch(
+            `http://localhost:8000/get-environments?folder_path=${encodeURIComponent(
+              validResponses['get-environments'].folder_path // Changed from folder-selection to jenkinsfile-gen
+            )}`
+          );
+
+          if (!environmentsResponse.ok) {
+            throw new Error(`HTTP error! status: ${environmentsResponse.status}`);
+          }
+          
+          const environmentData = await environmentsResponse.json();
+          console.log("get environments response:", environmentData);
+          apiResults['python_versions'] = environmentData;
+          
+          if (!environmentData.success) {
+            throw new Error("Fetching Environments Failed");
           }
           
           addMessage("bot", "Jenkinsfile generated successfully!");
