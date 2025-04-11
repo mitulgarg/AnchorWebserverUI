@@ -41,8 +41,10 @@ const Agent = () => {
   // Tools execution flow
   const [currentToolFlow, setCurrentToolFlow] = useState([]);
   const [currentToolIndex, setCurrentToolIndex] = useState(0);
-  const [toolQuestions, setToolQuestions] = useState({});
   
+  // Add a new state to track if we're processing tools
+  const [isProcessingTools, setIsProcessingTools] = useState(false);
+
   // Refs
   const chatContainerRef = useRef(null);
   const inputRef = useRef(null);
@@ -55,6 +57,83 @@ const Agent = () => {
     }
   }, []);
 
+  const fetchDynamicQuestion = async (toolName) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/acube/dynamicquestion?tool_name=${encodeURIComponent(toolName)}`
+      );
+      const data = await response.json();
+      const question = data[toolName];
+  
+      if (question === 'Pass') {
+        console.log(`Tool ${toolName} returned Pass - auto validating`);
+        // For Pass tools, we skip asking a question and go straight to validation
+        await handlePassTool(toolName);
+      } else {
+        addMessage("bot", question);
+      }
+    } catch (error) {
+      console.error("Error fetching dynamic question:", error);
+      addMessage("bot", "Failed to fetch the next question. Please try again.");
+    }
+  };
+  
+  const handlePassTool = async (toolName) => {
+    try {
+      // Validate the tool with empty answer
+      const validateResponse = await fetch(
+        `http://localhost:8000/acube/answervalidator?tool_name=${toolName}&answer=`
+      );
+      
+      const data = await validateResponse.json();
+      
+      if (data.variables) {
+        addMessage("bot", `Processing ${toolName} automatically...`);
+        
+        // Update our tracking state
+        const updatedResponses = {
+          ...validatedResponses,
+          [toolName]: data.variables
+        };
+        
+        const newValidatedTools = [...validatedTools, toolName];
+        
+        // First update the states
+        setValidatedResponses(updatedResponses);
+        setValidatedTools(newValidatedTools);
+        
+        // Check if we need to move to next tool
+        if (currentToolIndex < currentToolFlow.length - 1) {
+          // Move to next tool
+          const nextIndex = currentToolIndex + 1;
+          setCurrentToolIndex(nextIndex);
+          
+          // Important: Use the next tool directly rather than relying on the updated state
+          const nextTool = currentToolFlow[nextIndex];
+          
+          // Make sure we wait for state updates to propagate
+          setTimeout(() => {
+            fetchDynamicQuestion(nextTool);
+          }, 100);
+        } else {
+          // This was the last tool, complete the setup
+          setIsProcessingTools(false);
+          setCurrentToolFlow([]);
+          setCurrentToolIndex(0);
+          await completeSetup(updatedResponses, newValidatedTools);
+        }
+      } else {
+        // Handle validation error
+        addMessage("bot", "There was an unexpected error processing this step automatically.");
+        setIsProcessingTools(false);
+      }
+    } catch (error) {
+      console.error("Error in handlePassTool:", error);
+      addMessage("bot", `Error during automatic processing: ${error.message}`);
+      setIsProcessingTools(false);
+    }
+  };
+  
   // Save current chat to history whenever messages change
   useEffect(() => {
     if (messages.length > 1) { // Only update if there's more than the initial message
@@ -144,70 +223,75 @@ const Agent = () => {
     addMessage("bot", "Please describe what type of application you want to deploy on AWS:");
   };
   
+  // Update handleSendMessage
   const handleSendMessage = async () => {
     if (!userInput.trim()) return;
-    
-    const message = userInput;
+
+    const message = userInput.trim();
     setUserInput("");
     addMessage("user", message);
     setIsLoading(true);
-    
-    // Check if we're awaiting confirmation for tool execution
-    if (awaitingConfirmation) {
-      console.log("Processing confirmation response");
-      if (message.toLowerCase().includes("yes") || message.toLowerCase().includes("confirm") || message.toLowerCase().includes("proceed")) {
-        setAwaitingConfirmation(false);
-        startToolFlow();
-      } else {
-        addMessage("bot", "Would you like to modify the plan? Please describe your requirements again.");
-        setAwaitingConfirmation(false);
+
+    try {
+      // Handle different states
+      if (awaitingConfirmation) {
+        // Handle plan confirmation
+        const normalized = message.toLowerCase();
+        if (normalized === "yes" || normalized === "y" || normalized === "confirm") {
+          addMessage("bot", "Great! Let's get started with the setup.");
+          setAwaitingConfirmation(false);
+          
+          // First set the state to processing tools
+          setIsProcessingTools(true);
+          
+          // Then wait to ensure state is updated before starting the flow
+          setTimeout(() => {
+            startToolFlow();
+          }, 100);
+        } else {
+          addMessage("bot", "Okay, let's modify the plan. Please describe your changes.");
+          setAwaitingConfirmation(false);
+        }
+      } else if (isProcessingTools) {
+        // Handle tool-specific answers
+        const currentTool = currentToolFlow[currentToolIndex];
+        await validateToolAnswer(currentTool, message);
+      } else if (activeButton) {
+        // Handle initial user request
+        await getCICDPlan(message);
       }
+    } catch (error) {
+      console.error("Error in handleSendMessage:", error);
+      addMessage("bot", `An error occurred: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
-    // Check if we're in the middle of the tool flow
-    else if (currentToolFlow.length > 0 && currentToolIndex < currentToolFlow.length) {
-      // Handle tool flow questions
-      const currentTool = currentToolFlow[currentToolIndex];
-      console.log(`Processing answer for tool: ${currentTool}`);
-      await validateToolAnswer(currentTool, message);
-    }
-    // Handle first user input - get CICD plan
-    else if (activeButton) {
-      console.log("Getting CICD plan");
-      await getCICDPlan(message);
-    }
-    
-    setIsLoading(false);
   };
+  
   
   const getCICDPlan = async (userRequest) => {
     try {
       addMessage("bot", "Generating plan...");
       
-      const response = await fetch(`http://localhost:8000/acube/cicdplan?user_request=${encodeURIComponent(userRequest)}&service_type=${activeButton === "blue" ? "cicd" : activeButton === "red" ? "resource" : "observability"}`);
+      const response = await fetch(
+        `http://localhost:8000/acube/cicdplan?user_request=${encodeURIComponent(userRequest)}&service_type=${activeButton === "blue" ? "cicd" : activeButton === "red" ? "resource" : "observability"}`
+      );
       
       const data = await response.json();
       console.log("CICD plan response:", data);
       
       if (data["Tool Execution Order"]) {
-        // Store the tool execution order
         setCurrentToolFlow(data["Tool Execution Order"]);
-        setToolQuestions(data["Tool Questions"]);
-        
-        // IMPORTANT: Also reset the validated tools list when starting a new plan
         setValidatedTools([]);
         setValidatedResponses({});
         
-        // Show reasoning and tool execution order
         addMessage("bot", "Here's my plan:\n\n" + data["Reasoning Steps"]);
         
-        // Display the ordered list of tools
         const toolsList = data["Tool Execution Order"].map((tool, index) => 
           `${index + 1}. ${tool}`
         ).join('\n');
         
         addMessage("bot", `I'll execute the following tools in order:\n${toolsList}\n\nWould you like to proceed with this plan? (Yes/No)`);
-        
-        // Set awaiting confirmation
         setAwaitingConfirmation(true);
       } else if (data["Credential Error"]) {
         addMessage("bot", "There seems to be an issue with your AWS credentials. Please make sure they're configured correctly.");
@@ -222,19 +306,20 @@ const Agent = () => {
   
   const startToolFlow = () => {
     if (currentToolFlow.length > 0) {
-      const firstTool = currentToolFlow[0];
-      const question = toolQuestions[firstTool];
-      
-      console.log(`Starting tool flow with first tool: ${firstTool}`);
-      addMessage("bot", question || `Please provide information for ${firstTool}:`);
+      // Reset all tool-related states
+      setValidatedResponses({});
+      setValidatedTools([]);
       setCurrentToolIndex(0);
+      
+      // Start with the first tool
+      fetchDynamicQuestion(currentToolFlow[0]);
     }
   };
   
   const validateToolAnswer = async (toolName, answer) => {
     try {
       addMessage("bot", `Processing your answer for ${toolName}...`);
-      
+  
       const response = await fetch(
         `http://localhost:8000/acube/answervalidator?tool_name=${toolName}&answer=${encodeURIComponent(answer)}`
       );
@@ -244,27 +329,28 @@ const Agent = () => {
       if (data.variables) {
         addMessage("bot", `Great! I've validated your input for ${toolName}.`);
         
-        // Create updated copies of state
+        // Update our tracking state
         const updatedResponses = {
           ...validatedResponses,
           [toolName]: data.variables
         };
+        
         const newValidatedTools = [...validatedTools, toolName];
         
-        // Update state
         setValidatedResponses(updatedResponses);
         setValidatedTools(newValidatedTools);
-        
+  
         // Move to next tool if available
         if (currentToolIndex < currentToolFlow.length - 1) {
           const nextIndex = currentToolIndex + 1;
-          const nextTool = currentToolFlow[nextIndex];
-          const nextQuestion = toolQuestions[nextTool];
-          
           setCurrentToolIndex(nextIndex);
-          addMessage("bot", nextQuestion || `Please provide information for ${nextTool}:`);
+          // After updating the currentToolIndex, fetch the next question
+          fetchDynamicQuestion(currentToolFlow[nextIndex]);
         } else {
-          // Pass both updated values to completeSetup
+          // This was the last tool, complete the setup
+          setIsProcessingTools(false);
+          setCurrentToolFlow([]);
+          setCurrentToolIndex(0);
           await completeSetup(updatedResponses, newValidatedTools);
         }
       } else if (data.retry_exception) {
@@ -281,11 +367,14 @@ const Agent = () => {
   const completeSetup = async (responses = null, tools = null) => {
     try {
       addMessage("bot", "Setting up your application...");
-      
+
+      setIsProcessingTools(false);
+      setCurrentToolFlow([]);
+      setCurrentToolIndex(0);
       // Use parameters or fall back to state
       const validResponses = responses || validatedResponses;
       const validTools = tools || validatedTools;
-      
+
       console.log("Starting completeSetup with:", validResponses, validTools);
       
       // Verify we have responses and tools
@@ -315,13 +404,6 @@ const Agent = () => {
           endpointsToCall.add(toolsToEndpoints[tool].endpoint);
         }
       });
-      
-      // First pass: collect all endpoints we need to call
-      // tools.forEach(tool => {
-      //   if (toolsToEndpoints[tool]) {
-      //     endpointsToCall.add(toolsToEndpoints[tool].endpoint);
-      //   }
-      // });
       
       console.log("Endpoints to call based on validated tools:", Array.from(endpointsToCall));
       
@@ -428,13 +510,12 @@ const Agent = () => {
       }
       
       // Call jenkinsfile-gen if needed
-      // Update the Jenkinsfile-gen section in completeSetup
       if (endpointsToCall.has('jenkinsfile-gen') && validResponses['jenkinsfile-gen']?.folder_path) {
         try {
           addMessage("bot", "Generating Jenkinsfile...");
           const jenkinsfileResponse = await fetch(
             `http://localhost:8000/jenkinsfile-gen?folder_path=${encodeURIComponent(
-              validResponses['jenkinsfile-gen'].folder_path // Changed from folder-selection to jenkinsfile-gen
+              validResponses['jenkinsfile-gen'].folder_path
             )}`
           );
 
@@ -462,7 +543,7 @@ const Agent = () => {
           addMessage("bot", "Getting Python Environments...");
           const environmentsResponse = await fetch(
             `http://localhost:8000/get-environments?folder_path=${encodeURIComponent(
-              validResponses['get-environments'].folder_path // Changed from folder-selection to jenkinsfile-gen
+              validResponses['get-environments'].folder_path
             )}`
           );
 
@@ -478,10 +559,10 @@ const Agent = () => {
             throw new Error("Fetching Environments Failed");
           }
           
-          addMessage("bot", "Jenkinsfile generated successfully!");
+          addMessage("bot", "Python environments fetched successfully!");
         } catch (apiError) {
-          console.error("Jenkinsfile API error:", apiError);
-          addMessage("bot", `Error generating Jenkinsfile: ${apiError.message}`);
+          console.error("Get environments API error:", apiError);
+          addMessage("bot", `Error fetching environments: ${apiError.message}`);
         }
       }
       
@@ -540,9 +621,11 @@ const Agent = () => {
               switch(endpoint) {
                 case 'analyzer': return 'project analysis';
                 case 'dockerfile': return 'Dockerfile generation';
+                case 'dockerfile-gen': return 'Dockerfile generation'; // Add this line
                 case 'jenkinsfile': return 'Jenkinsfile generation';
                 case 'creds': return 'AWS credential validation';
                 case 'infra': return 'infrastructure code generation';
+                case 'python_versions': return 'Python environments';
                 default: return endpoint;
               }
             }).join(', ');
@@ -550,7 +633,7 @@ const Agent = () => {
             addMessage("bot", `Success! I've completed the following steps: ${completedSteps}. Your application setup is ready!`);
             
             // Only set deploy ready if we've completed all possible steps
-            const allPossibleEndpoints = new Set(['analyzer', 'dockerfile', 'jenkinsfile', 'creds', 'infra']);
+            const allPossibleEndpoints = new Set(['analyzer', 'dockerfile', 'dockerfile-gen', 'jenkinsfile', 'creds', 'infra']); // Add dockerfile-gen here too
             if (calledEndpoints.length === allPossibleEndpoints.size) {
               setIsDeployReady(true);
             }
@@ -584,10 +667,10 @@ const Agent = () => {
     // Reset the current state to match the loaded chat
     setCurrentToolFlow([]);
     setCurrentToolIndex(0);
-    setToolQuestions({});
     setAwaitingConfirmation(false);
     setValidatedResponses({}); 
-    setValidatedTools([]); // Reset validated tools list
+    setValidatedTools([]);
+    setIsProcessingTools(false);
     
     // Try to restore service type
     if (chatEntry.serviceType === "CI/CD Setup") {
@@ -619,12 +702,12 @@ const Agent = () => {
     setFormColor("");
     setCurrentToolFlow([]);
     setCurrentToolIndex(0);
-    setToolQuestions({});
     setAwaitingConfirmation(false);
     setIsDeployReady(false);
     setIsSidebarOpen(false);
     setValidatedResponses({});
-    setValidatedTools([]); // Reset validated tools list
+    setValidatedTools([]);
+    setIsProcessingTools(false);
   };
   
   const deleteChatHistory = (id, e) => {
