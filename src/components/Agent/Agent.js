@@ -12,26 +12,28 @@ import {
   faHistory,
   faMessage,
   faTimes,
-  faCog // Added faCog here as it was used but not imported
+  faCog
 } from "@fortawesome/free-solid-svg-icons";
-import { Link } from "react-router-dom";
-// Removed unused faSave, faEye, faEyeSlash if they are not used elsewhere
+// Import useNavigate for navigation
+import { Link, useNavigate } from "react-router-dom";
 
 const Agent = () => {
-  // States for chat and UI
+  // --- Hooks ---
+  const navigate = useNavigate(); // Hook for navigation
+
+  // --- States ---
   const [formColor, setFormColor] = useState("");
   const [activeButton, setActiveButton] = useState(null);
   const [userInput, setUserInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDeployReady, setIsDeployReady] = useState(false);
+  const [isDeployReady, setIsDeployReady] = useState(false); // State for showing the 'View/Deploy' button
   const [isLoading, setIsLoading] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState(() => Date.now()); // Use function for initial state if complex
+  const [currentChatId, setCurrentChatId] = useState(() => `chat-${Date.now()}`); // Ensure unique ID
 
-  // New state to store validated tool responses
+  // State to store validated tool responses
   const [validatedResponses, setValidatedResponses] = useState({});
-
-  // Keep track of all tools that were validated - new state
+  // Keep track of all tools that were validated - state
   const [validatedTools, setValidatedTools] = useState([]);
 
   // Chat history and messages
@@ -44,19 +46,24 @@ const Agent = () => {
   const [currentToolFlow, setCurrentToolFlow] = useState([]);
   const [currentToolIndex, setCurrentToolIndex] = useState(0);
 
-  // Add a new state to track if we're processing tools
+  // State to track if we're processing tools
   const [isProcessingTools, setIsProcessingTools] = useState(false);
 
-  // Refs
+  // --- Refs ---
   const chatContainerRef = useRef(null);
-  const inputRef = useRef(null);
+  const inputRef = useRef(null); // Ref for the input field
+
+  // --- Effects ---
 
   // Load chat history from localStorage on component mount
   useEffect(() => {
     const savedHistory = localStorage.getItem('acube-chat-history');
     if (savedHistory) {
       try {
-        setChatHistory(JSON.parse(savedHistory));
+        const parsedHistory = JSON.parse(savedHistory);
+        // Sort history by timestamp descending (most recent first) on load
+        parsedHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setChatHistory(parsedHistory);
       } catch (e) {
         console.error("Failed to parse chat history:", e);
         localStorage.removeItem('acube-chat-history'); // Clear corrupted history
@@ -64,10 +71,95 @@ const Agent = () => {
     }
   }, []);
 
-  // --- fetchDynamicQuestion - (Modified slightly for clarity) ---
+  // Save current chat to history whenever messages change
+  useEffect(() => {
+    // Only update history if it's not the very initial state or empty
+    if (messages.length > 1 || (messages.length === 1 && messages[0].text !== "Hello, I am Acube! Let's Get Started!")) {
+      updateChatInHistory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, currentChatId, activeButton]); // Add dependencies that affect the chat entry
+
+  // Scroll to the bottom of chat when new messages are added
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  // Save chat history to localStorage whenever it changes
+  useEffect(() => {
+    if (chatHistory.length > 0) {
+      localStorage.setItem('acube-chat-history', JSON.stringify(chatHistory));
+    } else {
+      localStorage.removeItem('acube-chat-history');
+    }
+  }, [chatHistory]);
+
+  // Debugging: Monitor validatedResponses changes
+  useEffect(() => {
+    console.log("State validatedResponses updated:", validatedResponses);
+  }, [validatedResponses]);
+
+   // Debugging: Monitor validatedTools changes
+   useEffect(() => {
+    console.log("State validatedTools updated:", validatedTools);
+  }, [validatedTools]);
+
+  // --- Functions ---
+
+  const addMessage = (sender, text) => {
+    if (!text || (typeof text === 'string' && !text.trim())) {
+      console.warn("Attempted to add an empty message.");
+      return;
+    }
+    setMessages(prevMessages => [...prevMessages, { sender, text }]);
+  };
+
+  const updateChatInHistory = () => {
+    let title = "New Conversation";
+    const userMessages = messages.filter(m => m.sender === "user");
+    if (userMessages.length > 0) {
+      title = userMessages[0].text.substring(0, 30) + (userMessages[0].text.length > 30 ? "..." : "");
+    } else if (messages.length > 1) {
+      title = messages[1].text.substring(0, 30) + (messages[1].text.length > 30 ? "..." : "");
+    }
+
+    const serviceType = activeButton ?
+                        (activeButton === "blue" ? "CI/CD Setup" :
+                         activeButton === "red" ? "Modify Resources" :
+                         activeButton === "green" ? "Observability" : "General")
+                        : "General";
+
+    const updatedChat = {
+      id: currentChatId,
+      title: title,
+      messages: [...messages],
+      timestamp: new Date().toISOString(),
+      serviceType: serviceType,
+      // Add state relevant for resuming later, e.g., if deploy was ready
+      // isDeployReady: isDeployReady // Persist deploy readiness state
+    };
+
+    setChatHistory(prevHistory => {
+      const existingIndex = prevHistory.findIndex(chat => chat.id === currentChatId);
+      const newHistory = [...prevHistory];
+      if (existingIndex >= 0) {
+        newHistory[existingIndex] = updatedChat;
+      } else {
+        // Add new entry and ensure it's at the top if sorting is descending
+        newHistory.push(updatedChat);
+      }
+       // Sort history by timestamp descending (most recent first)
+       newHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      return newHistory;
+    });
+  };
+
+
   const fetchDynamicQuestion = async (toolName) => {
     console.log(`Workspaceing question for tool: ${toolName}`);
-    setIsLoading(true); // Show loading indicator while fetching
+    setIsLoading(true);
     try {
       const response = await fetch(
         `http://localhost:8000/acube/dynamicquestion?tool_name=${encodeURIComponent(toolName)}`
@@ -80,30 +172,26 @@ const Agent = () => {
 
       if (question === 'Pass') {
         console.log(`Tool ${toolName} returned Pass - auto validating`);
-        // For Pass tools, skip asking and go straight to validation
-        // Use await here to ensure handlePassTool completes before setIsLoading(false)
-        await handlePassTool(toolName);
+        await handlePassTool(toolName); // handlePassTool handles loading state internally
       } else {
         addMessage("bot", question);
-        setIsLoading(false); // Hide loading only if we need user input
+        setIsLoading(false); // Stop loading, wait for user input
       }
     } catch (error) {
       console.error("Error fetching dynamic question:", error);
       addMessage("bot", `Failed to fetch the next question: ${error.message}. Please try again.`);
-      setIsLoading(false); // Hide loading on error
-      setIsProcessingTools(false); // Stop processing if question fails
+      setIsLoading(false);
+      setIsProcessingTools(false);
     }
-    // Note: setIsLoading(false) is handled within handlePassTool for the 'Pass' case
   };
 
   const handlePassTool = async (toolName) => {
     console.log(`Handling 'Pass' for tool: ${toolName}`);
-    setIsLoading(true); // Keep loading true during auto-processing
+    setIsLoading(true); // Keep loading during auto-processing
 
     try {
-       // Validate the tool with empty answer
        const validateResponse = await fetch(
-           `http://localhost:8000/acube/answervalidator?tool_name=${encodeURIComponent(toolName)}&answer=`
+           `http://localhost:8000/acube/answervalidator?tool_name=${encodeURIComponent(toolName)}&answer=` // Empty answer for 'Pass'
        );
        if (!validateResponse.ok) {
           throw new Error(`HTTP error! status: ${validateResponse.status}`);
@@ -113,70 +201,54 @@ const Agent = () => {
        if (data.variables) {
            addMessage("bot", `Processing ${toolName} automatically...`);
 
-           let finalResponses = {}; // To capture the state for completeSetup
-           let finalTools = [];     // To capture the state for completeSetup
+           let finalResponses = {};
+           let finalTools = [];
 
-           // Queue state updates using functional form for responses and tools
            setValidatedResponses(prevResponses => {
              const newResponses = { ...prevResponses, [toolName]: data.variables };
-             finalResponses = newResponses; // Capture for potential completion step
+             finalResponses = newResponses; // Capture for completion step
              console.log("Updated responses in handlePassTool:", newResponses);
              return newResponses;
            });
 
            setValidatedTools(prevTools => {
              const newTools = [...prevTools, toolName];
-             finalTools = newTools; // Capture for potential completion step
+             finalTools = newTools; // Capture for completion step
+              console.log("Updated tools in handlePassTool:", newTools);
              return newTools;
            });
 
-           // Prepare for next step determination
            let nextToolName = null;
            let shouldCompleteSetup = false;
 
-           // Atomically update the index and determine the *next* tool or completion
            setCurrentToolIndex(prevIndex => {
-               const nextIndex = prevIndex + 1; // Calculate the index for the *next* step
+               const nextIndex = prevIndex + 1;
                console.log(`[handlePassTool] Index updated from ${prevIndex} to ${nextIndex}`);
 
                if (nextIndex < currentToolFlow.length) {
-                   // If there's a next tool in the flow
                    nextToolName = currentToolFlow[nextIndex];
                    console.log(`[handlePassTool] Determined next tool: ${nextToolName} at index ${nextIndex}`);
                } else {
-                   // If this was the last tool
                    console.log("[handlePassTool] This was the last tool. Flagging for completion.");
                    shouldCompleteSetup = true;
                }
-               return nextIndex; // Return the updated index for React state
+               return nextIndex;
            });
 
-           // === Crucial Delay ===
-           // Introduce a minimal delay using a Promise and setTimeout with 0ms.
-           // This allows React's state updates (especially setCurrentToolIndex)
-           // to be processed before we act on the 'nextToolName' or 'shouldCompleteSetup' flags.
-           // It helps break potential race conditions in complex async flows.
-           await new Promise(resolve => setTimeout(resolve, 0));
-           // =====================
+           await new Promise(resolve => setTimeout(resolve, 0)); // Ensure state updates propagate
 
-           // Now execute the next step based on the flags set during the index update
            if (shouldCompleteSetup) {
-               console.log("[handlePassTool] Proceeding to complete setup...");
-               setIsProcessingTools(false);
-               setCurrentToolFlow([]); // Okay to clear flow now
-                // Reset index explicitly for safety after completion or cancellation
-               setCurrentToolIndex(0);
-
-               // Pass the captured final state to completeSetup
-               await completeSetup(finalResponses, finalTools);
-               // Note: completeSetup handles setIsLoading(false) in its finally block
+               console.log("[handlePassTool] Proceeding to complete setup (navigate)...");
+               // No longer setting isProcessingTools false here, handled in completeSetup
+               // No longer setting currentToolFlow/Index here, handled in completeSetup
+               completeSetup(finalResponses, finalTools); // Navigate
+               // setIsLoading(false) will be handled by navigation or if completeSetup errors before nav
 
            } else if (nextToolName) {
                console.log(`[handlePassTool] Calling fetchDynamicQuestion for: ${nextToolName}`);
-               await fetchDynamicQuestion(nextToolName); // fetchDynamicQuestion will handle setIsLoading
+               await fetchDynamicQuestion(nextToolName); // Continues the flow, fetch handles loading
            } else {
-               // Defensive coding: Should not happen if logic is correct
-               console.error("[handlePassTool] Error: Could not determine next step after processing.");
+               console.error("[handlePassTool] Error: Could not determine next step.");
                addMessage("bot", "An unexpected error occurred processing the steps.");
                setIsLoading(false);
                setIsProcessingTools(false);
@@ -197,117 +269,40 @@ const Agent = () => {
        setIsLoading(false);
        setIsProcessingTools(false);
     }
- }; // --- End of handlePassTool ---
+ };
 
-
-  // Save current chat to history whenever messages change
-  useEffect(() => {
-    if (messages.length > 1) { // Only update if there's more than the initial message
-      updateChatInHistory();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, currentChatId]); // Add currentChatId dependency
-
-  useEffect(() => {
-    // Scroll to the bottom of chat when new messages are added
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // Save chat history to localStorage whenever it changes
-  useEffect(() => {
-    if (chatHistory.length > 0) {
-      localStorage.setItem('acube-chat-history', JSON.stringify(chatHistory));
-    } else {
-      // Optional: Clear localStorage if history becomes empty
-      localStorage.removeItem('acube-chat-history');
-    }
-  }, [chatHistory]);
-
-  // Add a useEffect to monitor validatedResponses changes (for debugging)
-  useEffect(() => {
-    console.log("State validatedResponses updated:", validatedResponses);
-  }, [validatedResponses]);
-
-  // Handle key press for input
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !isLoading) { // Prevent sending while loading
+    if (e.key === 'Enter' && !isLoading) {
       handleSendMessage();
     }
   };
 
-  const updateChatInHistory = () => {
-    let title = "New Conversation";
-    const userMessages = messages.filter(m => m.sender === "user");
-    if (userMessages.length > 0) {
-      title = userMessages[0].text.substring(0, 30) + (userMessages[0].text.length > 30 ? "..." : "");
-    } else if (messages.length > 1) {
-        // Use first bot message (after initial) if no user message yet
-        title = messages[1].text.substring(0, 30) + (messages[1].text.length > 30 ? "..." : "");
-    }
-
-    const updatedChat = {
-      id: currentChatId,
-      title: title,
-      messages: [...messages],
-      timestamp: new Date().toISOString(),
-      serviceType: activeButton ?
-                  (activeButton === "blue" ? "CI/CD Setup" :
-                   activeButton === "red" ? "Modify Resources" :
-                   activeButton === "green" ? "Observability" : "General") // Added green button case
-                  : "General"
-    };
-
-    setChatHistory(prevHistory => {
-      const existingIndex = prevHistory.findIndex(chat => chat.id === currentChatId);
-      const newHistory = [...prevHistory];
-      if (existingIndex >= 0) {
-        newHistory[existingIndex] = updatedChat;
-      } else {
-        newHistory.push(updatedChat); // Add to end for new chats
-      }
-       // Sort history by timestamp descending (most recent first)
-       newHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      return newHistory;
-    });
-  };
-
-
-  const addMessage = (sender, text) => {
-    // Prevent adding empty messages
-    if (!text || (typeof text === 'string' && !text.trim())) {
-      console.warn("Attempted to add an empty message.");
-      return;
-    }
-    setMessages(prevMessages => [...prevMessages, { sender, text }]);
-  };
-
   const handleButtonClick = (color, buttonName) => {
-    setFormColor(`${color}-form`); // Match input form class logic
+    startNewChat(); // Start a fresh state for the new service
+
+    setFormColor(`${color}-form`);
     setActiveButton(buttonName);
-    setIsDeployReady(false); // Reset deploy state if a new service is selected
-    setMessages([{ sender: "bot", text: "Hello, I am Acube! Let's Get Started!" }]); // Reset messages for new service
-    setCurrentChatId(Date.now()); // Start a new chat session ID
 
     const serviceName = buttonName === "blue" ? "CI/CD Setup" :
                         buttonName === "red" ? "Modify Resources" :
-                        buttonName === "green" ? "Observability" : "Unknown Service"; // Added green button case
+                        buttonName === "green" ? "Observability" : "Unknown Service";
 
-    // Add message for service selection *after* resetting messages
-    addMessage("user", `Selected service: ${serviceName}`);
+    // Add messages *after* resetting state
+    setMessages([ // Reset messages completely
+       { sender: "bot", text: "Hello, I am Acube! Let's Get Started!" },
+       { sender: "user", text: `Selected service: ${serviceName}` },
+       { sender: "bot", text: `Okay, starting ${serviceName}. Please describe what you want to achieve:` }
+    ]);
 
-    // Bot asks for user input
-    addMessage("bot", `Okay, starting ${serviceName}. Please describe what you want to achieve:`);
+    // Focus input field after selection
+    inputRef.current?.focus();
   };
 
-
-  // Update handleSendMessage
   const handleSendMessage = async () => {
-    if (!userInput.trim() || isLoading) return; // Prevent sending empty or while loading
+    if (!userInput.trim() || isLoading) return;
 
     const message = userInput.trim();
-    setUserInput(""); // Clear input immediately
+    setUserInput("");
     addMessage("user", message);
     setIsLoading(true); // Set loading true
 
@@ -317,48 +312,50 @@ const Agent = () => {
         if (normalized === "yes" || normalized === "y" || normalized === "confirm") {
           addMessage("bot", "Great! Let's get started with the setup.");
           setAwaitingConfirmation(false);
+          // Removed direct call to startToolFlow, let getCICDPlan handle it if needed
+          // await startToolFlow(); // Start processing tools
+          // Let's rethink: Confirmation means we *start* the flow now.
           setIsProcessingTools(true);
-          // No setTimeout needed, startToolFlow will handle loading state
-          await startToolFlow(); // Make startToolFlow async if it involves awaits
+          await startToolFlow(); // Start the flow after 'yes'
+
         } else {
-          addMessage("bot", "Okay, plan cancelled. Please describe what you'd like to do instead.");
+          addMessage("bot", "Okay, plan cancelled. Please describe what you'd like to do instead, or select a service.");
           setAwaitingConfirmation(false);
-          setActiveButton(null); // Reset state to allow new selection or description
+          setActiveButton(null); // Reset state
           setFormColor("");
-           setIsLoading(false); // Stop loading as we are waiting for new input
+          setCurrentToolFlow([]); // Clear plan
+          setIsLoading(false); // Stop loading
         }
       } else if (isProcessingTools) {
         const currentTool = currentToolFlow[currentToolIndex];
-        // validateToolAnswer will handle isLoading state internally
-        await validateToolAnswer(currentTool, message);
+        await validateToolAnswer(currentTool, message); // Validate the answer
       } else if (activeButton) {
-        // Initial request after selecting service
-        // getCICDPlan will handle isLoading state internally
-        await getCICDPlan(message);
+        // Initial request for the selected service
+        await getCICDPlan(message); // Get the plan
       } else {
-         // General conversation or unexpected state
-         addMessage("bot", "Please select a service first (CI/CD Setup, Modify Resources, Observability) or describe your goal.");
+         // General conversation or initial state without service selected
+         addMessage("bot", "Please select a service (CI/CD Setup, Modify Resources, Observability) or describe your goal if you have selected one.");
          setIsLoading(false); // Stop loading
       }
     } catch (error) {
       console.error("Error in handleSendMessage:", error);
       addMessage("bot", `An error occurred: ${error.message}`);
-      setIsLoading(false); // Ensure loading is false on error
-      // Consider resetting state if error is critical
-      // setIsProcessingTools(false);
-      // setAwaitingConfirmation(false);
+      setIsLoading(false);
+      // Reset states on major error
+      setIsProcessingTools(false);
+      setAwaitingConfirmation(false);
+      setCurrentToolFlow([]);
+      setCurrentToolIndex(0);
     }
-    // isLoading state is managed within the called async functions now
   };
 
-
   const getCICDPlan = async (userRequest) => {
-     // setIsLoading(true) // Already set in handleSendMessage
+     // isLoading is already true from handleSendMessage
      addMessage("bot", "Generating plan...");
      try {
          const serviceTypeParam = activeButton === "blue" ? "cicd" :
                                  activeButton === "red" ? "resource" :
-                                 activeButton === "green" ? "observability" : "general"; // Added green case
+                                 activeButton === "green" ? "observability" : "general";
 
          const response = await fetch(
              `http://localhost:8000/acube/cicdplan?user_request=${encodeURIComponent(userRequest)}&service_type=${serviceTypeParam}`
@@ -371,9 +368,9 @@ const Agent = () => {
 
          if (data["Tool Execution Order"] && data["Tool Execution Order"].length > 0) {
              setCurrentToolFlow(data["Tool Execution Order"]);
-             setValidatedTools([]); // Reset validated tools for new plan
-             setValidatedResponses({}); // Reset responses for new plan
-             setCurrentToolIndex(0); // Reset index for new plan
+             setValidatedTools([]); // Reset for new plan
+             setValidatedResponses({}); // Reset for new plan
+             setCurrentToolIndex(0); // Reset for new plan
 
              addMessage("bot", "Here's my plan:\n\n" + data["Reasoning Steps"]);
 
@@ -383,33 +380,34 @@ const Agent = () => {
 
              addMessage("bot", `I'll execute the following tools in order:\n${toolsList}\n\nWould you like to proceed with this plan? (Yes/No)`);
              setAwaitingConfirmation(true);
+             setIsLoading(false); // Stop loading, wait for confirmation
          } else if (data["Credential Error"]) {
              addMessage("bot", "There seems to be an issue with your AWS credentials. Please make sure they're configured correctly via Settings.");
-             setAwaitingConfirmation(false); // Cannot proceed
+             setAwaitingConfirmation(false);
+             setIsLoading(false);
          } else {
              addMessage("bot", "Sorry, I couldn't generate a plan based on your request. Could you please provide more details or try rephrasing?");
-             setAwaitingConfirmation(false); // Reset confirmation state
+             setAwaitingConfirmation(false);
+             setIsLoading(false);
          }
      } catch (error) {
          console.error("Error getting plan:", error);
          addMessage("bot", `Failed to get plan: ${error.message}. Please check if the server is running and try again.`);
-         setAwaitingConfirmation(false); // Reset confirmation state
-     } finally {
-         setIsLoading(false); // Stop loading after plan generation attempt
+         setAwaitingConfirmation(false);
+         setIsLoading(false);
      }
+     // Removed finally block for isLoading, handled within try/catch now
   };
 
-  // Make startToolFlow async to handle potential awaits inside fetchDynamicQuestion
   const startToolFlow = async () => {
     if (currentToolFlow.length > 0) {
       console.log("Starting tool flow...");
-      // Reset state specific to a tool run
+      // Reset responses/tools specific to this run (already done in getCICDPlan potentially, but safe to repeat)
       setValidatedResponses({});
       setValidatedTools([]);
       setCurrentToolIndex(0);
       setIsProcessingTools(true); // Ensure this is set
-      // Fetch the first question - fetchDynamicQuestion handles loading state
-      await fetchDynamicQuestion(currentToolFlow[0]);
+      await fetchDynamicQuestion(currentToolFlow[0]); // Fetch first question, handles loading state
     } else {
         console.warn("startToolFlow called with empty currentToolFlow.");
         addMessage("bot", "Something went wrong, the execution plan is empty.");
@@ -418,10 +416,9 @@ const Agent = () => {
     }
   };
 
-  // --- validateToolAnswer - (REVISED AGAIN to mirror handlePassTool fix) ---
   const validateToolAnswer = async (toolName, answer) => {
+    // isLoading is already true from handleSendMessage
     addMessage("bot", `Processing your answer for ${toolName}...`);
-    // setIsLoading(true); // Already set in handleSendMessage, or ensure it's set if called otherwise
 
     try {
       const response = await fetch(
@@ -435,10 +432,9 @@ const Agent = () => {
       if (data.variables) {
         addMessage("bot", `Great! I've validated your input for ${toolName}.`);
 
-        let finalResponses = {}; // To capture the state for completeSetup
-        let finalTools = [];     // To capture the state for completeSetup
+        let finalResponses = {};
+        let finalTools = [];
 
-        // Queue state updates using functional form for responses and tools
         setValidatedResponses(prevResponses => {
           const newResponses = { ...prevResponses, [toolName]: data.variables };
           finalResponses = newResponses;
@@ -450,14 +446,13 @@ const Agent = () => {
         setValidatedTools(prevTools => {
           const newTools = [...prevTools, toolName];
           finalTools = newTools;
+           console.log("Updated tools in validateToolAnswer:", newTools);
           return newTools;
         });
 
-        // Prepare for next step determination
         let nextToolName = null;
         let shouldCompleteSetup = false;
 
-        // Atomically update the index and determine the *next* tool or completion
         setCurrentToolIndex(prevIndex => {
             const nextIndex = prevIndex + 1;
             console.log(`[validateToolAnswer] Index updated from ${prevIndex} to ${nextIndex}`);
@@ -469,27 +464,21 @@ const Agent = () => {
                 console.log("[validateToolAnswer] This was the last tool. Flagging for completion.");
                 shouldCompleteSetup = true;
             }
-            return nextIndex; // Return the updated index
+            return nextIndex;
         });
 
-        // === Crucial Delay ===
-        await new Promise(resolve => setTimeout(resolve, 0));
-        // =====================
+        await new Promise(resolve => setTimeout(resolve, 0)); // Ensure state updates propagate
 
-        // Now execute the next step based on the flags
         if (shouldCompleteSetup) {
-            console.log("[validateToolAnswer] Proceeding to complete setup...");
-            setIsProcessingTools(false);
-            setCurrentToolFlow([]);
-            setCurrentToolIndex(0); // Reset index
-
-             // Pass the captured final state
-            await completeSetup(finalResponses, finalTools);
-            // completeSetup handles setIsLoading(false)
+            console.log("[validateToolAnswer] Proceeding to complete setup (navigate)...");
+            // No longer setting isProcessingTools false here, handled in completeSetup
+            // No longer setting currentToolFlow/Index here, handled in completeSetup
+            completeSetup(finalResponses, finalTools); // Navigate
+            // setIsLoading(false) will be handled by navigation or if completeSetup errors before nav
 
         } else if (nextToolName) {
             console.log(`[validateToolAnswer] Calling fetchDynamicQuestion for: ${nextToolName}`);
-            await fetchDynamicQuestion(nextToolName); // fetchDynamicQuestion handles setIsLoading
+            await fetchDynamicQuestion(nextToolName); // Continues the flow, fetch handles loading
         } else {
             console.error("[validateToolAnswer] Error: Could not determine next step after validation.");
             addMessage("bot", "An unexpected error occurred processing the steps.");
@@ -498,352 +487,79 @@ const Agent = () => {
         }
 
       } else if (data.retry_exception) {
-        addMessage("bot", data.retry_exception);
-        setIsLoading(false); // Stop loading, waiting for user retry
+        addMessage("bot", data.retry_exception); // Ask user to retry
+        setIsLoading(false); // Stop loading, wait for user retry
       } else {
         addMessage("bot", `There was an issue with your answer for ${toolName}. Please try again.`);
-        setIsLoading(false); // Stop loading, waiting for user retry
+        setIsLoading(false); // Stop loading, wait for user retry
       }
     } catch (error) {
       console.error(`Error validating answer for ${toolName}:`, error);
       addMessage("bot", `Failed to validate your answer for ${toolName}: ${error.message}. Please try again.`);
-      setIsLoading(false); // Stop loading on error
-      setIsProcessingTools(false); // Stop processing flow on validation error
+      setIsLoading(false);
+      setIsProcessingTools(false); // Stop flow on validation error
     }
-  }; // --- End of validateToolAnswer ---
-
-
-  // --- completeSetup - (Minor logging improvements) ---
-  // Agent.js (Replace the entire existing completeSetup function with this one)
-
-const completeSetup = async (responses = null, tools = null) => {
-  console.log("Entering completeSetup function...");
-  addMessage("bot", "Finalizing setup based on your inputs...");
-  setIsLoading(true); // Set loading state
-
-  // --- Reset state related to the interactive flow ---
-  setIsProcessingTools(false);
-  setCurrentToolFlow([]);
-  setCurrentToolIndex(0);
-  setIsDeployReady(false); // Default to not ready, set true only on full success
-
-  // --- Determine the definitive list of responses and tools ---
-  // Use provided parameters if they exist, otherwise fallback to component state
-  // Clone objects/arrays to prevent unintended modifications to state
-  const validResponses = responses ? { ...responses } : { ...validatedResponses };
-  const validTools = tools ? [...tools] : [...validatedTools];
-
-  console.log("completeSetup using tools:", JSON.stringify(validTools));
-  console.log("completeSetup using responses:", JSON.stringify(validResponses));
-
-  // --- Basic Input Validation ---
-  if (!validTools || validTools.length === 0) {
-      console.warn("completeSetup called with no validated tools. Aborting setup.");
-      addMessage("bot", "It seems no steps were successfully configured. Cannot proceed with setup.");
-      setIsLoading(false); // Turn off loading
-      return; // Exit the function
-  }
-
-  if (!validResponses || Object.keys(validResponses).length === 0) {
-      // Allow proceeding but log a warning, as some tools might not need responses (e.g., 'get-creds')
-      console.warn("completeSetup called with tools but no validated responses. Proceeding cautiously.");
-      // Optional: addMessage("bot", "Warning: Some required information might be missing.");
-  }
-
-  // --- Initialization ---
-  const apiResults = {}; // Store results of each API call (success/failure)
-  let workDir = '';       // Will be populated by analyzer
-  let entrypoint = '';    // Will be populated by analyzer
-  let appType = '';       // Will be populated by analyzer
-  let pythonVersion = ''; // May come from 'dockerfile-gen' response or analyzer
-  let folderPath = '';    // Crucial path, obtained from various tools
-
-  // --- Tool to Endpoint Mapping ---
-  // Ensure keys here EXACTLY match the tool names received in `validTools`
-  const toolsToEndpoints = {
-      'get-environments': { endpoint: 'get-environments' },
-      'analyzer': { endpoint: 'analyzer' },
-      'dockerfile-gen': { endpoint: 'dockerfile-gen' },
-      'jenkinsfile-gen': { endpoint: 'jenkinsfile-gen' },
-      'get-creds': { endpoint: 'creds' }, // Note the mapping
-      'infra': { endpoint: 'infra' }
-      // Add other mappings as needed
   };
 
-  // --- Determine which endpoints need to be called ---
-  const endpointsToCall = new Map(); // Using Map: endpointName -> toolName
-  validTools.forEach(toolName => {
-      if (toolsToEndpoints[toolName]) {
-          const endpointName = toolsToEndpoints[toolName].endpoint;
-          endpointsToCall.set(endpointName, toolName); // Map endpoint to the tool that triggered it
-      } else {
-          console.warn(`No endpoint mapping defined for validated tool: ${toolName}`);
-      }
-  });
-  console.log("Endpoints determined to be called:", Array.from(endpointsToCall.keys()));
+  // --- MODIFIED completeSetup ---
+  // This function now ONLY navigates to Main.js, passing the collected data.
+  const completeSetup = (responses, tools) => {
+    console.log("Entering completeSetup function (Agent.js)...");
+    addMessage("bot", "All inputs collected. Proceeding to setup execution...");
+    setIsLoading(true); // Show loading briefly while preparing navigation
 
-  // --- Execute API Calls Sequentially ---
-  // Outer try/catch for general orchestration errors, finally ensures loading stops
-  try {
+    // Use the passed arguments directly as they represent the final state
+    const validResponses = responses || {};
+    const validTools = tools || [];
 
-      // --- Step 1: Get Environments (Optional, provides context) ---
-      if (endpointsToCall.has('get-environments')) {
-          const toolName = endpointsToCall.get('get-environments');
-          const toolData = validResponses[toolName] || {}; // Use empty object if no data
-          folderPath = toolData.folder_path || folderPath; // Update folderPath if available
+    console.log("CompleteSetup preparing to navigate with tools:", JSON.stringify(validTools));
+    console.log("CompleteSetup preparing to navigate with responses:", JSON.stringify(validResponses));
 
-          if (folderPath) {
-              console.log(`Executing API call for: get-environments (Tool: ${toolName})`);
-              addMessage("bot", "Fetching Python environment details...");
-              try {
-                  const response = await fetch(`http://localhost:8000/get-environments?folder_path=${encodeURIComponent(folderPath)}`);
-                  if (!response.ok) {
-                      throw new Error(`HTTP error ${response.status}`);
-                  }
-                  const data = await response.json();
-                  console.log("API Response (get-environments):", data);
-                  apiResults['get-environments'] = data; // Store result
-                  if (!data.success) {
-                      throw new Error(data.error || "Failed to fetch environments");
-                  }
-                  addMessage("bot", "Python environment details fetched.");
-              } catch (error) {
-                  console.error(`API Error (get-environments): ${error.message}`);
-                  addMessage("bot", `Error fetching environments: ${error.message}`);
-                  apiResults['get-environments'] = { success: false, error: error.message };
-              }
-          } else {
-              console.warn(`Skipping get-environments: Missing folder_path for tool ${toolName}`);
-              apiResults['get-environments'] = { success: false, error: "Missing folder_path input" };
-          }
-      }
+    // Basic Check: Ensure there are tools to execute
+    if (!validTools || validTools.length === 0) {
+        console.error("completeSetup called with no validated tools. Cannot navigate.");
+        addMessage("bot", "It seems no steps were successfully configured. Cannot proceed.");
+        // Reset states as the flow is broken
+        setIsLoading(false);
+        setIsProcessingTools(false);
+        setCurrentToolFlow([]);
+        setCurrentToolIndex(0);
+        setValidatedResponses({});
+        setValidatedTools([]);
+        setActiveButton(null); // Go back to service selection maybe?
+        setFormColor("");
+        return; // Stop here
+    }
 
-      // --- Step 2: Analyzer (Crucial for many subsequent steps) ---
-      let analyzerSucceeded = false; // Flag to check prerequisite for later steps
-      if (endpointsToCall.has('analyzer')) {
-          const toolName = endpointsToCall.get('analyzer');
-          const toolData = validResponses[toolName] || {};
-          folderPath = toolData.folder_path || folderPath; // Update folderPath again if available
-          const environmentPath = toolData.environment_path; // Optional env path
+    // Reset agent's processing state before navigating away
+    setIsProcessingTools(false);
+    setCurrentToolFlow([]);
+    setCurrentToolIndex(0);
+    // Optionally clear validatedResponses/Tools from Agent state now,
+    // as they are being passed to Main.js. Keep if needed for history reload.
+    // setValidatedResponses({});
+    // setValidatedTools([]);
 
-          if (folderPath) {
-              console.log(`Executing API call for: analyzer (Tool: ${toolName})`);
-              addMessage("bot", "Analyzing project structure...");
-              try {
-                  const requestBody = { folder_path: folderPath };
-                  if (environmentPath) {
-                      requestBody.environment_path = environmentPath;
-                  }
-                  const response = await fetch("http://localhost:8000/analyzer", {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(requestBody)
-                  });
-                  if (!response.ok) {
-                      throw new Error(`HTTP error ${response.status}`);
-                  }
-                  const data = await response.json();
-                  console.log("API Response (analyzer):", data);
-                  apiResults['analyzer'] = data; // Store result
-                  if (!data.success) {
-                      throw new Error(data.error || "Project analysis failed");
-                  }
-                  // Store critical info from successful analysis
-                  workDir = data.work_dir;
-                  entrypoint = data.entrypoint;
-                  appType = data.app_type;
-                  analyzerSucceeded = true; // Set flag
-                  addMessage("bot", `Project analysis complete! App type: ${appType || 'Unknown'}.`);
-              } catch (error) {
-                  console.error(`API Error (analyzer): ${error.message}`);
-                  addMessage("bot", `Error during project analysis: ${error.message}`);
-                  apiResults['analyzer'] = { success: false, error: error.message };
-              }
-          } else {
-              console.warn(`Skipping analyzer: Missing folder_path for tool ${toolName}`);
-              addMessage("bot", "Cannot analyze project: Folder path is missing.");
-              apiResults['analyzer'] = { success: false, error: "Missing folder_path input" };
-          }
-      }
 
-      // --- Step 3: Dockerfile Generation (Depends on Analyzer) ---
-      if (endpointsToCall.has('dockerfile-gen')) {
-          if (analyzerSucceeded && appType && workDir && entrypoint) {
-              const toolName = endpointsToCall.get('dockerfile-gen');
-              const toolData = validResponses[toolName] || {};
-              folderPath = toolData.folder_path || folderPath; // Ensure folder path is known
-              pythonVersion = toolData.python_version || pythonVersion || '3.9'; // Get python version (provide default)
-
-              if (folderPath) {
-                  console.log(`Executing API call for: dockerfile-gen (Tool: ${toolName})`);
-                  addMessage("bot", `Generating Dockerfile for ${appType}...`);
-                  try {
-                      const url = `http://localhost:8000/dockerfile-gen?app_type=${encodeURIComponent(appType)}` +
-                                  `&python_version=${encodeURIComponent(pythonVersion)}` +
-                                  `&work_dir=${encodeURIComponent(workDir)}` +
-                                  `&entrypoint=${encodeURIComponent(entrypoint)}` +
-                                  `&folder_path=${encodeURIComponent(folderPath)}`;
-                      const response = await fetch(url);
-                      if (!response.ok) {
-                          throw new Error(`HTTP error ${response.status}`);
-                      }
-                      const data = await response.json();
-                      console.log("API Response (dockerfile-gen):", data);
-                      apiResults['dockerfile-gen'] = data;
-                      if (!data.success) {
-                          throw new Error(data.error || "Dockerfile generation failed");
-                      }
-                      addMessage("bot", "Dockerfile generated successfully!");
-                  } catch (error) {
-                      console.error(`API Error (dockerfile-gen): ${error.message}`);
-                      addMessage("bot", `Error generating Dockerfile: ${error.message}`);
-                      apiResults['dockerfile-gen'] = { success: false, error: error.message };
-                  }
-              } else {
-                   console.warn(`Skipping dockerfile-gen: folder_path is missing (Tool: ${toolName})`);
-                   apiResults['dockerfile-gen'] = { success: false, error: "Missing folder_path" };
-              }
-          } else {
-              console.warn("Skipping dockerfile-gen: Prerequisites not met (analyzer success, appType, workDir, entrypoint).");
-               apiResults['dockerfile-gen'] = { success: false, error: "Missing prerequisites from analyzer step" };
-          }
-      }
-
-      // --- Step 4: Jenkinsfile Generation (Requires folder_path) ---
-      if (endpointsToCall.has('jenkinsfile-gen')) {
-          const toolName = endpointsToCall.get('jenkinsfile-gen');
-          const toolData = validResponses[toolName] || {};
-          folderPath = toolData.folder_path || folderPath; // Ensure folder path is known
-
-          if (folderPath) {
-              console.log(`Executing API call for: jenkinsfile-gen (Tool: ${toolName})`);
-              addMessage("bot", "Generating Jenkinsfile...");
-              try {
-                   const url = `http://localhost:8000/jenkinsfile-gen?folder_path=${encodeURIComponent(folderPath)}`;
-                   const response = await fetch(url);
-                   if (!response.ok) {
-                       throw new Error(`HTTP error ${response.status}`);
-                   }
-                   const data = await response.json();
-                   console.log("API Response (jenkinsfile-gen):", data);
-                   apiResults['jenkinsfile-gen'] = data;
-                   if (!data.success) {
-                       throw new Error(data.error || "Jenkinsfile generation failed");
-                   }
-                   addMessage("bot", "Jenkinsfile generated successfully!");
-              } catch (error) {
-                   console.error(`API Error (jenkinsfile-gen): ${error.message}`);
-                   addMessage("bot", `Error generating Jenkinsfile: ${error.message}`);
-                   apiResults['jenkinsfile-gen'] = { success: false, error: error.message };
-              }
-          } else {
-              console.warn(`Skipping jenkinsfile-gen: Missing folder_path (Tool: ${toolName})`);
-              apiResults['jenkinsfile-gen'] = { success: false, error: "Missing folder_path" };
-          }
-      }
-
-      // --- Step 5: AWS Creds Check ---
-      if (endpointsToCall.has('creds')) {
-           const toolName = endpointsToCall.get('creds'); // Actually 'get-creds' tool maps to 'creds' endpoint
-           console.log(`Executing API call for: creds (Tool: ${toolName})`);
-           addMessage("bot", "Checking AWS credentials setup...");
-           try {
-               const response = await fetch("http://localhost:8000/creds");
-               if (!response.ok) {
-                   throw new Error(`HTTP error ${response.status}`);
-               }
-               const data = await response.json();
-               console.log("API Response (creds):", data);
-               apiResults['creds'] = data;
-               if (!data.success) {
-                   throw new Error(data.error || "Failed to retrieve/validate AWS credentials");
-               }
-               addMessage("bot", "AWS credentials checked successfully!");
-           } catch (error) {
-               console.error(`API Error (creds): ${error.message}`);
-               addMessage("bot", `Error checking AWS credentials: ${error.message}`);
-               apiResults['creds'] = { success: false, error: error.message };
-           }
-       }
-
-      // --- Step 6: Infrastructure Generation (Depends on Analyzer) ---
-      if (endpointsToCall.has('infra')) {
-           if (analyzerSucceeded && workDir) {
-               const toolName = endpointsToCall.get('infra');
-               console.log(`Executing API call for: infra (Tool: ${toolName})`);
-               addMessage("bot", "Generating infrastructure code (Terraform, Jenkins jobs)...");
-               try {
-                   const url = `http://localhost:8000/infra?work_dir=${encodeURIComponent(workDir)}`;
-                   const response = await fetch(url);
-                   if (!response.ok) {
-                       throw new Error(`HTTP error ${response.status}`);
-                   }
-                   const data = await response.json();
-                   console.log("API Response (infra):", data);
-                   apiResults['infra'] = data;
-                   if (!data.success) {
-                       throw new Error(data.error || "Infrastructure generation failed");
-                   }
-                   addMessage("bot", "Infrastructure code generated successfully!");
-               } catch (error) {
-                   console.error(`API Error (infra): ${error.message}`);
-                   addMessage("bot", `Error generating infrastructure: ${error.message}`);
-                   apiResults['infra'] = { success: false, error: error.message };
-               }
-           } else {
-               console.warn("Skipping infra: Prerequisites not met (analyzer success, workDir).");
-               apiResults['infra'] = { success: false, error: "Missing prerequisites from analyzer step" };
-           }
-       }
-
-      // --- If we reach here, the main orchestration try block completed ---
-      console.log("All planned API calls attempted.");
-
-  } catch (orchestrationError) {
-      // Catch errors in the setup logic itself (e.g., programming errors above)
-      console.error("Critical error during completeSetup orchestration:", orchestrationError);
-      addMessage("bot", `A critical error occurred during the setup process: ${orchestrationError.message}.`);
-      // apiResults might be incomplete, but we'll still proceed to finally and summary
-  } finally {
-      // --- This block always runs, whether try succeeded or failed ---
-      console.log("Executing finally block of completeSetup.");
-      console.log("Final API Results state:", JSON.stringify(apiResults));
-
-      // --- Final Summary based on apiResults ---
-      const executedEndpointNames = Object.keys(apiResults);
-
-      if (executedEndpointNames.length > 0) {
-          const successfulEndpoints = executedEndpointNames.filter(name => apiResults[name]?.success === true);
-          const failedEndpoints = executedEndpointNames.filter(name => apiResults[name]?.success === false);
-
-          if (failedEndpoints.length === 0 && successfulEndpoints.length === executedEndpointNames.length) {
-              // All executed APIs succeeded
-               const completedSteps = successfulEndpoints.map(name => name).join(', '); // Simple list of names
-               addMessage("bot", `Success! All setup steps completed: ${completedSteps}. Your application environment is ready!`);
-               setIsDeployReady(true); // Set ready for deploy button
-          } else {
-              // Some or all APIs failed
-               const failedStepsList = failedEndpoints.map(name => `${name} (${apiResults[name]?.error || 'Unknown error'})`).join(', ');
-               const successStepsList = successfulEndpoints.join(', ') || 'None';
-               addMessage("bot", `Setup finished. Successful steps: ${successStepsList}. Failed steps: ${failedStepsList}.`);
-               setIsDeployReady(false); // Not fully ready
-          }
-      } else if (endpointsToCall.size > 0) {
-          // We intended to call endpoints, but apiResults is empty (likely hit the outer catch early)
-           addMessage("bot", "Setup process could not be completed due to an early critical error.");
-           setIsDeployReady(false);
-      } else {
-          // No endpoints were determined to be called based on the plan
-          addMessage("bot", "No setup steps were executed based on the provided plan.");
-          setIsDeployReady(false);
-      }
-
-      // Ensure loading is turned off *after* summary message and state is set
-      setIsLoading(false);
-      console.log("Exiting completeSetup function.");
-  } // End finally block
-
-}; // End of completeSetup function definition
+    // --- Navigate to Main.js ---
+    // Pass the collected tools and responses via location state
+    try {
+        console.log("Navigating to /main...");
+        navigate('/main', {
+            state: {
+                validatedResponses: validResponses,
+                validatedTools: validTools,
+                // Optional: Pass other context if needed by Main.js
+                // serviceType: activeButton // Example: 'blue', 'red', 'green'
+            }
+        });
+        // setIsLoading(false); // Navigation will unmount or change view, loading state might not matter after this point.
+    } catch (navError) {
+        console.error("Navigation error:", navError);
+        addMessage("bot", "Error trying to proceed to the setup screen.");
+        setIsLoading(false); // Stop loading if navigation fails
+    }
+  }; // --- End of MODIFIED completeSetup ---
 
 
   const toggleSidebar = () => {
@@ -857,20 +573,20 @@ const completeSetup = async (responses = null, tools = null) => {
     }
 
     console.log("Loading chat:", chatEntry.id, chatEntry.title);
-    // Start a new conversation based on the history
+
+    // --- Reset all interactive states ---
     setCurrentChatId(chatEntry.id);
     setMessages(chatEntry.messages);
-
-    // Reset the current interaction state
     setCurrentToolFlow([]);
     setCurrentToolIndex(0);
     setAwaitingConfirmation(false);
-    setValidatedResponses({});
-    setValidatedTools([]);
+    setValidatedResponses({}); // Clear previous run's data
+    setValidatedTools([]);   // Clear previous run's data
     setIsProcessingTools(false);
-    setIsLoading(false); // Ensure loading is off when loading history
+    setIsLoading(false);
+    setIsDeployReady(false); // Reset deploy ready state, determine based on loaded chat below
 
-    // Restore service type and form color
+    // --- Restore service type and form color from history ---
     let serviceRestored = false;
     if (chatEntry.serviceType === "CI/CD Setup") {
       setActiveButton("blue");
@@ -889,19 +605,27 @@ const completeSetup = async (responses = null, tools = null) => {
        setFormColor("");
     }
 
-    // Check if this conversation was completed (heuristic)
+    // --- Determine if the loaded chat represents a completed setup ---
+    // Check if the *last* message indicates success AND we are NOT currently processing tools.
+    // This check might need refinement based on how `Main.js` signals completion back to `Agent.js` (if it does).
+    // For now, we assume loading history means we *aren't* mid-execution.
     const lastMessage = chatEntry.messages[chatEntry.messages.length - 1];
-    // Improved check for success message
-    if (lastMessage && lastMessage.sender === 'bot' && lastMessage.text.toLowerCase().startsWith("success!")) {
-        setIsDeployReady(true);
+    // A more robust check might involve looking for the navigation trigger message or a specific success marker saved in history.
+    if (lastMessage && lastMessage.sender === 'bot' && lastMessage.text.startsWith("All inputs collected.")) {
+        // Heuristic: If the last message was the one *before* navigating, assume setup *might* be complete or viewable.
+        // This button's purpose might need redefining - maybe it should re-run the navigation?
+        // Setting isDeployReady based on past history is tricky. Let's keep it false on load for now.
+        // setIsDeployReady(true);
+        setIsDeployReady(false); // Safer default on load
+        console.log("Loaded chat ended before potential execution phase.");
     } else {
-        setIsDeployReady(false);
+         setIsDeployReady(false);
     }
 
-    // If no service was restored but messages exist beyond initial, show input
+    // If no service was restored but messages exist beyond initial, potentially set a general active state
     if (!serviceRestored && chatEntry.messages.length > 1) {
-        setActiveButton("general"); // Use a generic active state if needed
-        setFormColor(""); // Default form color
+        setActiveButton("general"); // Or keep null depending on desired UX
+        setFormColor("");
     }
 
 
@@ -910,7 +634,7 @@ const completeSetup = async (responses = null, tools = null) => {
 
   const startNewChat = () => {
     console.log("Starting new chat");
-    setCurrentChatId(Date.now());
+    setCurrentChatId(`chat-${Date.now()}`);
     setMessages([{ sender: "bot", text: "Hello, I am Acube! Let's Get Started!" }]);
     setActiveButton(null);
     setFormColor("");
@@ -922,15 +646,14 @@ const completeSetup = async (responses = null, tools = null) => {
     setValidatedResponses({});
     setValidatedTools([]);
     setIsProcessingTools(false);
-    setIsLoading(false); // Ensure loading is off
+    setIsLoading(false);
   };
 
   const deleteChatHistory = (idToDelete, e) => {
-    e.stopPropagation(); // Prevent loading the chat when clicking delete
+    e.stopPropagation();
     console.log("Deleting chat:", idToDelete);
     setChatHistory(prevHistory => {
       const newHistory = prevHistory.filter(chat => chat.id !== idToDelete);
-      // Update localStorage immediately
       if (newHistory.length > 0) {
           localStorage.setItem('acube-chat-history', JSON.stringify(newHistory));
       } else {
@@ -939,9 +662,8 @@ const completeSetup = async (responses = null, tools = null) => {
       return newHistory;
     });
 
-    // If the deleted chat was the currently active one, start a new chat
     if (currentChatId === idToDelete) {
-        startNewChat();
+        startNewChat(); // Start fresh if the active chat was deleted
     }
   };
 
@@ -985,7 +707,7 @@ const completeSetup = async (responses = null, tools = null) => {
                     <div className="history-details">
                       <span className="history-title">{chat.title || "Untitled Chat"}</span>
                       <span className="history-date">
-                        {new Date(chat.timestamp).toLocaleDateString()} {new Date(chat.timestamp).toLocaleTimeString()}
+                        {new Date(chat.timestamp).toLocaleDateString()} {new Date(chat.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
@@ -1008,7 +730,7 @@ const completeSetup = async (responses = null, tools = null) => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }} // Slightly faster transition
+          transition={{ duration: 0.5 }}
           className="agent-container"
         >
           <Card className="agent-card">
@@ -1017,60 +739,58 @@ const completeSetup = async (responses = null, tools = null) => {
               <div ref={chatContainerRef} className="chat-messages-container">
                 {messages.map((message, index) => (
                   <div
-                    key={index} // Use index as key is okay if list isn't reordered, but prefer unique ID if possible
+                    // Using a combination of index and sender for slightly better key, though not ideal if messages are ever inserted/deleted mid-list. ID would be best.
+                    key={`${message.sender}-${index}-${message.text.substring(0, 10)}`}
                     className={`message ${message.sender === "bot" ? "bot-message" : "user-message"}`}
                   >
                     {message.sender === "bot" && (
                       <div className="bot-avatar">
-                        {/* Ensure the path to your logo is correct relative to the public folder */}
                         <img src="/ChatBot-Logo.png" alt="Acube Bot" />
                       </div>
                     )}
                     <div className="message-content">
-                       {/* Using pre-wrap to preserve newlines from backend */}
                        <div style={{ whiteSpace: 'pre-wrap' }}>{message.text}</div>
                     </div>
                   </div>
                 ))}
 
                 {isLoading && (
-                  <div className="message bot-message"> {/* Typing indicator styled as a bot message */}
+                  <div className="message bot-message"> {/* Typing indicator */}
                     <div className="bot-avatar">
                       <img src="/ChatBot-Logo.png" alt="Acube Bot Typing" />
                     </div>
                     <div className="message-content">
                         <div className="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
+                        <span></span><span></span><span></span>
                         </div>
                     </div>
                   </div>
                 )}
               </div> {/* End chat-messages-container */}
 
-              {/* Button Options (only show if no service selected and messages array is just the initial one) */}
-              {!activeButton && messages.length === 1 && (
+              {/* Button Options */}
+              {/* Show if no service selected AND it's the initial message state */}
+               {!activeButton && messages.length === 1 && messages[0].text === "Hello, I am Acube! Let's Get Started!" && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }} // Less dramatic entry
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.4 }}
                   className="button-options"
                 >
                   <button
-                    className={`agent-button agent-button-blue ${activeButton === "blue" ? "active" : ""}`} // Added base class
+                    className={`agent-button agent-button-blue`}
                     onClick={() => handleButtonClick("blue", "blue")}
                   >
                     CI/CD Setup
                   </button>
                   <button
-                    className={`agent-button agent-button-red ${activeButton === "red" ? "active" : ""}`} // Added base class
+                    className={`agent-button agent-button-red`}
                     onClick={() => handleButtonClick("red", "red")}
                   >
                     Modify Resources
                   </button>
                   <button
-                    className={`agent-button agent-button-green ${activeButton === "green" ? "active" : ""}`} // Added base class
+                    className={`agent-button agent-button-green`}
                     onClick={() => handleButtonClick("green", "green")}
                   >
                     Observability
@@ -1078,44 +798,28 @@ const completeSetup = async (responses = null, tools = null) => {
                 </motion.div>
               )}
 
-              {/* Deploy Button (conditionally rendered) */}
-              {isDeployReady && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="deploy-button-container"
-                >
-                  {/* Link might need adjustment based on where /main leads */}
-                  <Link to="/main" className="deploy-button-link">
-                    <button className="deploy-button">
-                      View/Deploy Setup <FontAwesomeIcon icon={faArrowRight} />
-                    </button>
-                  </Link>
-                </motion.div>
-              )}
+              {/* Deploy Button -> Removed as setup happens in Main.js */}
+              {/* {isDeployReady && ( ... )} */}
 
-              {/* Input Form (show if a service is active OR conversation started, but not deploy ready) */}
-              {activeButton && !isDeployReady && (
-                 <div className={`chat-input-container ${formColor}`}> {/* Apply color class here */}
+               {/* Input Form */}
+               {/* Show input if a service button is active OR if it's a general chat that has progressed beyond the initial message */}
+               {(activeButton || (messages.length > 1 && !isProcessingTools && !awaitingConfirmation)) && !isDeployReady && (
+                 <div className={`chat-input-container ${formColor}`}>
                   <input
                     type="text"
                     ref={inputRef}
-                    className="chat-input" // Removed formColor from here, handled by parent
-                    placeholder={isLoading ? "Acube is thinking..." : "Type your message..."}
+                    className="chat-input"
+                    placeholder={isLoading ? "Acube is thinking..." : (awaitingConfirmation ? "Confirm plan (Yes/No)" : "Type your message...")}
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    // --- CHANGE THIS LINE ---
-                    disabled={isLoading} // Only disable when isLoading is true
-                    // --- END CHANGE ---
+                    disabled={isLoading} // Disable only when actively loading/processing
                     aria-label="Chat input"
                   />
                   <button
-                     className="send-button" // Removed formColor from here, handled by parent
+                     className="send-button"
                     onClick={handleSendMessage}
-                    // Keep this button logic - disable if loading OR input is empty
-                    disabled={isLoading || !userInput.trim()}
+                    disabled={isLoading || !userInput.trim()} // Disable if loading OR input empty
                     title="Send Message"
                     aria-label="Send Message"
                   >
