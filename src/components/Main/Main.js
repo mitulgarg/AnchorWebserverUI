@@ -39,7 +39,7 @@ const toolEndpointMap = {
         cardId: 4, // Primarily Infra setup
         // cardId: 5, // Also Jenkins setup - Handled explicitly later
         method: 'GET', // Assuming GET based on Agent, verify if POST is needed
-        requiresParams: ['work_dir'] // Example, verify required params
+        requiresParams: ['work_dir', 'instance_size'] // Example, verify required params
     },
     'get-environments': {
         endpoint: 'http://localhost:8000/get-environments',
