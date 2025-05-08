@@ -14,37 +14,59 @@ const SettingsPage = () => {
   const [showPrivateKey, setShowPrivateKey] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
 
-  // Load saved keys from localStorage on component mount
   useEffect(() => {
-    const savedPublicKey = localStorage.getItem('acube-public-key');
-    const savedPrivateKey = localStorage.getItem('acube-private-key');
-    
-    if (savedPublicKey) setPublicKey(savedPublicKey);
-    if (savedPrivateKey) setPrivateKey(savedPrivateKey);
+    const fetchKeys = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/get-keys/');
+        if (response.ok) {
+          const data = await response.json();
+          setPublicKey(data.public_key || '');
+          setPrivateKey(atob(data.private_key || ''));
+        } else {
+          console.error('Failed to fetch keys:', response.status);
+        }
+      } catch (error) {
+        console.error('Error fetching keys:', error);
+      }
+    };
+    console.log("Fetching keys...");
+    fetchKeys();
   }, []);
+  
 
-  const handleSaveKeys = () => {
-    // Basic validation
+  const handleSaveKeys = async () => {
     if (!publicKey.trim() || !privateKey.trim()) {
       setSaveStatus('Please enter both public and private keys');
       return;
     }
-
+  
     try {
-      // Save keys to localStorage
-      localStorage.setItem('acube-public-key', publicKey);
-      localStorage.setItem('acube-private-key', privateKey);
-      
-      setSaveStatus('Keys saved successfully!');
-      
-      // Clear status message after 3 seconds
-      setTimeout(() => setSaveStatus(''), 3000);
+      const encodedPrivateKey = btoa(privateKey); // Base64 encode the private key
+  
+      const response = await fetch('http://127.0.0.1:8000/api/save-keys', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          public_key: publicKey,
+          private_key: encodedPrivateKey
+        })
+      });
+  
+      if (response.ok) {
+        setSaveStatus('Keys saved securely to backend!');
+        setTimeout(() => setSaveStatus(''), 3000);
+      } else {
+        const errorData = await response.json();
+        setSaveStatus(`Error: ${errorData.detail}`);
+      }
     } catch (error) {
-      setSaveStatus('Error saving keys');
-      console.error('Error saving keys:', error);
+      console.error('Error sending keys:', error);
+      setSaveStatus('Unexpected error sending keys');
     }
   };
-
+  
   return (
     <div className="settings-fullscreen">
       <NavHead />
