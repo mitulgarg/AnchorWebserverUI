@@ -47,6 +47,13 @@ const toolEndpointMap = {
         method: 'GET',
         requiresParams: ['folder_path'],
         providesResultKeys: ['python_versions'] // Added based on sample response
+    },
+    'github-webhook-setup': {
+        endpoint: 'http://localhost:8000/github-webhook-setup',   
+        cardId: 4,
+
+        method: 'GET',
+        requiresParams: ['folder_path'],
     }
 };
 
