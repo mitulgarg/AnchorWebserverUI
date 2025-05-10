@@ -3,15 +3,29 @@ import ImageSlider from './ImageSlider/ImageSlider.js';  // Adjust the path if n
 import './Home.css';  // Your home page styles (if you have them)
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import NavHead from './NavHead/NavHead.js';
 import { motion } from "framer-motion";
+import {
+  faArrowRight,
+  faCog
+} from "@fortawesome/free-solid-svg-icons";
 
 function Home() {
 
   return (
+
+    <div className="agent-fullscreen">
+    <NavHead />
+
+    {/* Settings Button */}
+    <Link to="/settings" className="settings-toggle-btn" title="Settings">
+       <FontAwesomeIcon icon={faCog} />
+    </Link>
+
+
+{/* 
     <div>
-        <NavHead />
+        <NavHead /> */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
