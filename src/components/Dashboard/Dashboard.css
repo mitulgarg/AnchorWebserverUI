@@ -74,10 +74,10 @@
 
   .header-card {
     color: white;
-    margin-top: 2rem;
-    margin-bottom: 2rem;
+
     font-size: 2.25rem;
     font-weight: bold;
+    margin-left: auto;
   }
 
   /* Card Grid Styles */
@@ -85,7 +85,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 24px;
-    padding: 24px;
+    padding: 4px;
     max-width: 100%;
     margin: 0 auto;
     background-color: #111827;
