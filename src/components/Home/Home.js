@@ -14,7 +14,7 @@ function Home() {
 
   return (
 
-    <div className="agent-fullscreen">
+    <div>
     <NavHead />
 
     {/* Settings Button */}
