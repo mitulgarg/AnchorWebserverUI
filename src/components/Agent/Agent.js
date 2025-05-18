@@ -12,7 +12,9 @@ import {
   faHistory,
   faMessage,
   faTimes,
-  faCog
+  faCog,
+  faClipboardList, // Icon for Review Dashboard
+  faCogs // Icon for Setup CI/CD (or keep faArrowRight)
 } from "@fortawesome/free-solid-svg-icons";
 // Import useNavigate for navigation
 import { Link, useNavigate } from "react-router-dom";
@@ -26,7 +28,7 @@ const Agent = () => {
   const [activeButton, setActiveButton] = useState(null);
   const [userInput, setUserInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDeployReady, setIsDeployReady] = useState(false); // State for showing the 'View/Deploy' button
+  // const [isDeployReady, setIsDeployReady] = useState(false); // State for showing the 'View/Deploy' button - Replaced by showPostCollectionOptions
   const [isLoading, setIsLoading] = useState(false);
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
   const [currentChatId, setCurrentChatId] = useState(() => `chat-${Date.now()}`); // Ensure unique ID
@@ -48,6 +50,12 @@ const Agent = () => {
 
   // State to track if we're processing tools
   const [isProcessingTools, setIsProcessingTools] = useState(false);
+
+  // --- New States for post-collection options ---
+  const [showPostCollectionOptions, setShowPostCollectionOptions] = useState(false);
+  const [finalizedValidatedResponses, setFinalizedValidatedResponses] = useState({});
+  const [finalizedValidatedTools, setFinalizedValidatedTools] = useState([]);
+
 
   // --- Refs ---
   const chatContainerRef = useRef(null);
@@ -137,8 +145,11 @@ const Agent = () => {
       messages: [...messages],
       timestamp: new Date().toISOString(),
       serviceType: serviceType,
-      // Add state relevant for resuming later, e.g., if deploy was ready
-      // isDeployReady: isDeployReady // Persist deploy readiness state
+      // Persist if post-collection options were shown and what data was ready
+      // This might be useful if you want to resume to the button choice step
+      // showPostCollectionOptions: showPostCollectionOptions,
+      // finalizedValidatedResponses: showPostCollectionOptions ? finalizedValidatedResponses : {},
+      // finalizedValidatedTools: showPostCollectionOptions ? finalizedValidatedTools : [],
     };
 
     setChatHistory(prevHistory => {
@@ -147,10 +158,8 @@ const Agent = () => {
       if (existingIndex >= 0) {
         newHistory[existingIndex] = updatedChat;
       } else {
-        // Add new entry and ensure it's at the top if sorting is descending
         newHistory.push(updatedChat);
       }
-       // Sort history by timestamp descending (most recent first)
        newHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       return newHistory;
     });
@@ -172,10 +181,10 @@ const Agent = () => {
 
       if (question === 'Pass') {
         console.log(`Tool ${toolName} returned Pass - auto validating`);
-        await handlePassTool(toolName); // handlePassTool handles loading state internally
+        await handlePassTool(toolName);
       } else {
         addMessage("bot", question);
-        setIsLoading(false); // Stop loading, wait for user input
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Error fetching dynamic question:", error);
@@ -187,11 +196,11 @@ const Agent = () => {
 
   const handlePassTool = async (toolName) => {
     console.log(`Handling 'Pass' for tool: ${toolName}`);
-    setIsLoading(true); // Keep loading during auto-processing
+    setIsLoading(true);
 
     try {
        const validateResponse = await fetch(
-           `http://localhost:8000/acube/answervalidator?tool_name=${encodeURIComponent(toolName)}&answer=` // Empty answer for 'Pass'
+           `http://localhost:8000/acube/answervalidator?tool_name=${encodeURIComponent(toolName)}&answer=`
        );
        if (!validateResponse.ok) {
           throw new Error(`HTTP error! status: ${validateResponse.status}`);
@@ -201,52 +210,45 @@ const Agent = () => {
        if (data.variables) {
            addMessage("bot", `Processing ${toolName} automatically...`);
 
-           let finalResponses = {};
-           let finalTools = [];
+           let currentResponses = {};
+           let currentTools = [];
 
            setValidatedResponses(prevResponses => {
              const newResponses = { ...prevResponses, [toolName]: data.variables };
-             finalResponses = newResponses; // Capture for completion step
+             currentResponses = newResponses;
              console.log("Updated responses in handlePassTool:", newResponses);
              return newResponses;
            });
 
            setValidatedTools(prevTools => {
              const newTools = [...prevTools, toolName];
-             finalTools = newTools; // Capture for completion step
-              console.log("Updated tools in handlePassTool:", newTools);
+             currentTools = newTools;
+             console.log("Updated tools in handlePassTool:", newTools);
              return newTools;
            });
 
            let nextToolName = null;
-           let shouldCompleteSetup = false;
+           let shouldCompleteDataCollection = false;
 
            setCurrentToolIndex(prevIndex => {
                const nextIndex = prevIndex + 1;
-               console.log(`[handlePassTool] Index updated from ${prevIndex} to ${nextIndex}`);
-
                if (nextIndex < currentToolFlow.length) {
                    nextToolName = currentToolFlow[nextIndex];
-                   console.log(`[handlePassTool] Determined next tool: ${nextToolName} at index ${nextIndex}`);
                } else {
-                   console.log("[handlePassTool] This was the last tool. Flagging for completion.");
-                   shouldCompleteSetup = true;
+                   shouldCompleteDataCollection = true;
                }
                return nextIndex;
            });
 
-           await new Promise(resolve => setTimeout(resolve, 0)); // Ensure state updates propagate
+           // Ensure state updates are processed before proceeding
+           await new Promise(resolve => setTimeout(resolve, 0));
 
-           if (shouldCompleteSetup) {
-               console.log("[handlePassTool] Proceeding to complete setup (navigate)...");
-               // No longer setting isProcessingTools false here, handled in completeSetup
-               // No longer setting currentToolFlow/Index here, handled in completeSetup
-               completeSetup(finalResponses, finalTools); // Navigate
-               // setIsLoading(false) will be handled by navigation or if completeSetup errors before nav
 
+           if (shouldCompleteDataCollection) {
+               console.log("[handlePassTool] All tools processed. Proceeding to show options.");
+               completeSetup(currentResponses, currentTools); // Pass the latest collected data
            } else if (nextToolName) {
-               console.log(`[handlePassTool] Calling fetchDynamicQuestion for: ${nextToolName}`);
-               await fetchDynamicQuestion(nextToolName); // Continues the flow, fetch handles loading
+               await fetchDynamicQuestion(nextToolName);
            } else {
                console.error("[handlePassTool] Error: Could not determine next step.");
                addMessage("bot", "An unexpected error occurred processing the steps.");
@@ -272,13 +274,13 @@ const Agent = () => {
  };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !isLoading) {
+    if (e.key === 'Enter' && !isLoading && !showPostCollectionOptions) { // Prevent send if options are shown
       handleSendMessage();
     }
   };
 
   const handleButtonClick = (color, buttonName) => {
-    startNewChat(); // Start a fresh state for the new service
+    startNewChat(); 
 
     setFormColor(`${color}-form`);
     setActiveButton(buttonName);
@@ -286,25 +288,21 @@ const Agent = () => {
     const serviceName = buttonName === "blue" ? "CI/CD Setup" :
                         buttonName === "red" ? "Modify Resources" :
                         buttonName === "green" ? "Observability" : "Unknown Service";
-
-    // Add messages *after* resetting state
-    setMessages([ // Reset messages completely
+    setMessages([
        { sender: "bot", text: "Hello, I am Acube! Let's Get Started!" },
        { sender: "user", text: `Selected service: ${serviceName}` },
        { sender: "bot", text: `Okay, starting ${serviceName}. Please describe what you want to achieve:` }
     ]);
-
-    // Focus input field after selection
     inputRef.current?.focus();
   };
 
   const handleSendMessage = async () => {
-    if (!userInput.trim() || isLoading) return;
+    if (!userInput.trim() || isLoading || showPostCollectionOptions) return;
 
     const message = userInput.trim();
     setUserInput("");
     addMessage("user", message);
-    setIsLoading(true); // Set loading true
+    setIsLoading(true);
 
     try {
       if (awaitingConfirmation) {
@@ -312,36 +310,29 @@ const Agent = () => {
         if (normalized === "yes" || normalized === "y" || normalized === "confirm") {
           addMessage("bot", "Great! Let's get started with the setup.");
           setAwaitingConfirmation(false);
-          // Removed direct call to startToolFlow, let getCICDPlan handle it if needed
-          // await startToolFlow(); // Start processing tools
-          // Let's rethink: Confirmation means we *start* the flow now.
           setIsProcessingTools(true);
-          await startToolFlow(); // Start the flow after 'yes'
-
+          await startToolFlow(); 
         } else {
           addMessage("bot", "Okay, plan cancelled. Please describe what you'd like to do instead, or select a service.");
           setAwaitingConfirmation(false);
-          setActiveButton(null); // Reset state
+          setActiveButton(null);
           setFormColor("");
-          setCurrentToolFlow([]); // Clear plan
-          setIsLoading(false); // Stop loading
+          setCurrentToolFlow([]);
+          setIsLoading(false);
         }
       } else if (isProcessingTools) {
         const currentTool = currentToolFlow[currentToolIndex];
-        await validateToolAnswer(currentTool, message); // Validate the answer
+        await validateToolAnswer(currentTool, message);
       } else if (activeButton) {
-        // Initial request for the selected service
-        await getCICDPlan(message); // Get the plan
+        await getCICDPlan(message);
       } else {
-         // General conversation or initial state without service selected
          addMessage("bot", "Please select a service (CI/CD Setup, Modify Resources, Observability) or describe your goal if you have selected one.");
-         setIsLoading(false); // Stop loading
+         setIsLoading(false);
       }
     } catch (error) {
       console.error("Error in handleSendMessage:", error);
       addMessage("bot", `An error occurred: ${error.message}`);
       setIsLoading(false);
-      // Reset states on major error
       setIsProcessingTools(false);
       setAwaitingConfirmation(false);
       setCurrentToolFlow([]);
@@ -350,8 +341,8 @@ const Agent = () => {
   };
 
   const getCICDPlan = async (userRequest) => {
-     // isLoading is already true from handleSendMessage
      addMessage("bot", "Generating plan...");
+     setIsLoading(true); // Ensure loading is true
      try {
          const serviceTypeParam = activeButton === "blue" ? "cicd" :
                                  activeButton === "red" ? "resource" :
@@ -368,19 +359,15 @@ const Agent = () => {
 
          if (data["Tool Execution Order"] && data["Tool Execution Order"].length > 0) {
              setCurrentToolFlow(data["Tool Execution Order"]);
-             setValidatedTools([]); // Reset for new plan
-             setValidatedResponses({}); // Reset for new plan
-             setCurrentToolIndex(0); // Reset for new plan
+             setValidatedTools([]); 
+             setValidatedResponses({}); 
+             setCurrentToolIndex(0);
 
              addMessage("bot", "Here's my plan:\n\n" + data["Reasoning Steps"]);
-
-             const toolsList = data["Tool Execution Order"].map((tool, index) =>
-                 `${index + 1}. ${tool}`
-             ).join('\n');
-
+             const toolsList = data["Tool Execution Order"].map((tool, index) => `${index + 1}. ${tool}`).join('\n');
              addMessage("bot", `I'll execute the following tools in order:\n${toolsList}\n\nWould you like to proceed with this plan? (Yes/No)`);
              setAwaitingConfirmation(true);
-             setIsLoading(false); // Stop loading, wait for confirmation
+             setIsLoading(false);
          } else if (data["Credential Error"]) {
              addMessage("bot", "There seems to be an issue with your AWS credentials. Please make sure they're configured correctly via Settings.");
              setAwaitingConfirmation(false);
@@ -396,18 +383,17 @@ const Agent = () => {
          setAwaitingConfirmation(false);
          setIsLoading(false);
      }
-     // Removed finally block for isLoading, handled within try/catch now
   };
 
   const startToolFlow = async () => {
     if (currentToolFlow.length > 0) {
       console.log("Starting tool flow...");
-      // Reset responses/tools specific to this run (already done in getCICDPlan potentially, but safe to repeat)
       setValidatedResponses({});
       setValidatedTools([]);
       setCurrentToolIndex(0);
-      setIsProcessingTools(true); // Ensure this is set
-      await fetchDynamicQuestion(currentToolFlow[0]); // Fetch first question, handles loading state
+      setIsProcessingTools(true);
+      setShowPostCollectionOptions(false); // Ensure options are hidden when flow starts
+      await fetchDynamicQuestion(currentToolFlow[0]);
     } else {
         console.warn("startToolFlow called with empty currentToolFlow.");
         addMessage("bot", "Something went wrong, the execution plan is empty.");
@@ -417,8 +403,8 @@ const Agent = () => {
   };
 
   const validateToolAnswer = async (toolName, answer) => {
-    // isLoading is already true from handleSendMessage
     addMessage("bot", `Processing your answer for ${toolName}...`);
+    setIsLoading(true); // Ensure loading is true
 
     try {
       const response = await fetch(
@@ -432,53 +418,42 @@ const Agent = () => {
       if (data.variables) {
         addMessage("bot", `Great! I've validated your input for ${toolName}.`);
 
-        let finalResponses = {};
-        let finalTools = [];
+        let currentResponses = {};
+        let currentTools = [];
 
         setValidatedResponses(prevResponses => {
           const newResponses = { ...prevResponses, [toolName]: data.variables };
-          finalResponses = newResponses;
-          console.log(`Tool ${toolName} validated successfully:`, data.variables);
-          console.log("Updated responses in validateToolAnswer:", newResponses);
+          currentResponses = newResponses;
           return newResponses;
         });
 
         setValidatedTools(prevTools => {
           const newTools = [...prevTools, toolName];
-          finalTools = newTools;
-           console.log("Updated tools in validateToolAnswer:", newTools);
+          currentTools = newTools;
           return newTools;
         });
 
         let nextToolName = null;
-        let shouldCompleteSetup = false;
+        let shouldCompleteDataCollection = false;
 
         setCurrentToolIndex(prevIndex => {
             const nextIndex = prevIndex + 1;
-            console.log(`[validateToolAnswer] Index updated from ${prevIndex} to ${nextIndex}`);
-
             if (nextIndex < currentToolFlow.length) {
                 nextToolName = currentToolFlow[nextIndex];
-                console.log(`[validateToolAnswer] Determined next tool: ${nextToolName} at index ${nextIndex}`);
             } else {
-                console.log("[validateToolAnswer] This was the last tool. Flagging for completion.");
-                shouldCompleteSetup = true;
+                shouldCompleteDataCollection = true;
             }
             return nextIndex;
         });
 
-        await new Promise(resolve => setTimeout(resolve, 0)); // Ensure state updates propagate
+        // Ensure state updates are processed before proceeding
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-        if (shouldCompleteSetup) {
-            console.log("[validateToolAnswer] Proceeding to complete setup (navigate)...");
-            // No longer setting isProcessingTools false here, handled in completeSetup
-            // No longer setting currentToolFlow/Index here, handled in completeSetup
-            completeSetup(finalResponses, finalTools); // Navigate
-            // setIsLoading(false) will be handled by navigation or if completeSetup errors before nav
-
+        if (shouldCompleteDataCollection) {
+            console.log("[validateToolAnswer] All tools processed. Proceeding to show options.");
+            completeSetup(currentResponses, currentTools); // Pass the latest collected data
         } else if (nextToolName) {
-            console.log(`[validateToolAnswer] Calling fetchDynamicQuestion for: ${nextToolName}`);
-            await fetchDynamicQuestion(nextToolName); // Continues the flow, fetch handles loading
+            await fetchDynamicQuestion(nextToolName);
         } else {
             console.error("[validateToolAnswer] Error: Could not determine next step after validation.");
             addMessage("bot", "An unexpected error occurred processing the steps.");
@@ -487,79 +462,89 @@ const Agent = () => {
         }
 
       } else if (data.retry_exception) {
-        addMessage("bot", data.retry_exception); // Ask user to retry
-        setIsLoading(false); // Stop loading, wait for user retry
+        addMessage("bot", data.retry_exception);
+        setIsLoading(false);
       } else {
         addMessage("bot", `There was an issue with your answer for ${toolName}. Please try again.`);
-        setIsLoading(false); // Stop loading, wait for user retry
+        setIsLoading(false);
       }
     } catch (error) {
       console.error(`Error validating answer for ${toolName}:`, error);
       addMessage("bot", `Failed to validate your answer for ${toolName}: ${error.message}. Please try again.`);
       setIsLoading(false);
-      setIsProcessingTools(false); // Stop flow on validation error
+      setIsProcessingTools(false);
     }
   };
 
   // --- MODIFIED completeSetup ---
-  // This function now ONLY navigates to Main.js, passing the collected data.
   const completeSetup = (responses, tools) => {
     console.log("Entering completeSetup function (Agent.js)...");
-    addMessage("bot", "All inputs collected. Proceeding to setup execution...");
-    setIsLoading(true); // Show loading briefly while preparing navigation
-
-    // Use the passed arguments directly as they represent the final state
+    addMessage("bot", "All inputs collected. Please choose your next step from the options below.");
+    
     const validResponses = responses || {};
     const validTools = tools || [];
 
-    console.log("CompleteSetup preparing to navigate with tools:", JSON.stringify(validTools));
-    console.log("CompleteSetup preparing to navigate with responses:", JSON.stringify(validResponses));
+    console.log("Data collection complete. Tools:", JSON.stringify(validTools));
+    console.log("Data collection complete. Responses:", JSON.stringify(validResponses));
 
-    // Basic Check: Ensure there are tools to execute
     if (!validTools || validTools.length === 0) {
-        console.error("completeSetup called with no validated tools. Cannot navigate.");
+        console.error("completeSetup called with no validated tools. Cannot proceed.");
         addMessage("bot", "It seems no steps were successfully configured. Cannot proceed.");
-        // Reset states as the flow is broken
         setIsLoading(false);
         setIsProcessingTools(false);
         setCurrentToolFlow([]);
         setCurrentToolIndex(0);
         setValidatedResponses({});
         setValidatedTools([]);
-        setActiveButton(null); // Go back to service selection maybe?
+        setActiveButton(null); 
         setFormColor("");
-        return; // Stop here
+        setShowPostCollectionOptions(false);
+        return; 
     }
 
-    // Reset agent's processing state before navigating away
+    setFinalizedValidatedResponses(validResponses);
+    setFinalizedValidatedTools(validTools);
+    
     setIsProcessingTools(false);
-    setCurrentToolFlow([]);
+    setCurrentToolFlow([]); // Clear the flow as it's done
     setCurrentToolIndex(0);
-    // Optionally clear validatedResponses/Tools from Agent state now,
-    // as they are being passed to Main.js. Keep if needed for history reload.
-    // setValidatedResponses({});
-    // setValidatedTools([]);
+    setShowPostCollectionOptions(true); // Show the new buttons
+    setIsLoading(false); // Stop loading indicator
+  };
+  // --- End of MODIFIED completeSetup ---
 
+  // --- New Button Handlers for Post-Collection Options ---
+  const handleNavigateToReviewDashboard = () => {
+    console.log("Navigating to /review-dashboard with data:", finalizedValidatedResponses, finalizedValidatedTools);
+    setIsLoading(true); // Optional: show loading while navigating
+    setShowPostCollectionOptions(false); // Hide buttons
 
-    // --- Navigate to Main.js ---
-    // Pass the collected tools and responses via location state
-    try {
-        console.log("Navigating to /main...");
-        navigate('/main', {
-            state: {
-                validatedResponses: validResponses,
-                validatedTools: validTools,
-                // Optional: Pass other context if needed by Main.js
-                // serviceType: activeButton // Example: 'blue', 'red', 'green'
-            }
-        });
-        // setIsLoading(false); // Navigation will unmount or change view, loading state might not matter after this point.
-    } catch (navError) {
-        console.error("Navigation error:", navError);
-        addMessage("bot", "Error trying to proceed to the setup screen.");
-        setIsLoading(false); // Stop loading if navigation fails
-    }
-  }; // --- End of MODIFIED completeSetup ---
+    navigate('/review-dashboard', {
+        state: {
+            validatedResponses: finalizedValidatedResponses,
+            validatedTools: finalizedValidatedTools,
+            serviceType: activeButton 
+        }
+    });
+    // Consider if a full chat reset is needed here or if the user might come "back"
+    // For now, just hide options. If they come back, they might resume or start new.
+    // startNewChat(); // If you want to force a new chat session after this action
+  };
+
+  const handleNavigateToMain = () => {
+    console.log("Navigating to /main with data:", finalizedValidatedResponses, finalizedValidatedTools);
+    setIsLoading(true); // Optional: show loading while navigating
+    setShowPostCollectionOptions(false); // Hide buttons
+
+    navigate('/main', {
+        state: {
+            validatedResponses: finalizedValidatedResponses,
+            validatedTools: finalizedValidatedTools,
+            serviceType: activeButton
+        }
+    });
+    // startNewChat(); // If you want to force a new chat session after this action
+  };
 
 
   const toggleSidebar = () => {
@@ -571,65 +556,48 @@ const Agent = () => {
       console.error("Attempted to load invalid chat entry:", chatEntry);
       return;
     }
-
     console.log("Loading chat:", chatEntry.id, chatEntry.title);
 
-    // --- Reset all interactive states ---
     setCurrentChatId(chatEntry.id);
     setMessages(chatEntry.messages);
     setCurrentToolFlow([]);
     setCurrentToolIndex(0);
     setAwaitingConfirmation(false);
-    setValidatedResponses({}); // Clear previous run's data
-    setValidatedTools([]);   // Clear previous run's data
+    setValidatedResponses({}); 
+    setValidatedTools([]);   
     setIsProcessingTools(false);
     setIsLoading(false);
-    setIsDeployReady(false); // Reset deploy ready state, determine based on loaded chat below
+    setShowPostCollectionOptions(false); // Reset this when loading history
+    // setFinalizedValidatedResponses({}); // Reset finalized data too
+    // setFinalizedValidatedTools([]);
 
-    // --- Restore service type and form color from history ---
     let serviceRestored = false;
     if (chatEntry.serviceType === "CI/CD Setup") {
-      setActiveButton("blue");
-      setFormColor("blue-form");
-      serviceRestored = true;
+      setActiveButton("blue"); setFormColor("blue-form"); serviceRestored = true;
     } else if (chatEntry.serviceType === "Modify Resources") {
-      setActiveButton("red");
-      setFormColor("red-form");
-      serviceRestored = true;
+      setActiveButton("red"); setFormColor("red-form"); serviceRestored = true;
     } else if (chatEntry.serviceType === "Observability") {
-      setActiveButton("green");
-      setFormColor("green-form");
-      serviceRestored = true;
+      setActiveButton("green"); setFormColor("green-form"); serviceRestored = true;
     } else {
-       setActiveButton(null);
-       setFormColor("");
+       setActiveButton(null); setFormColor("");
     }
+    
+    // Check if loaded chat was at the stage of showing post-collection options.
+    // This logic depends on how you save the state in `updateChatInHistory`.
+    // For now, we assume loading a chat resets to before post-collection options.
+    // if (chatEntry.showPostCollectionOptions && chatEntry.finalizedValidatedTools?.length > 0) {
+    //    setFinalizedValidatedResponses(chatEntry.finalizedValidatedResponses);
+    //    setFinalizedValidatedTools(chatEntry.finalizedValidatedTools);
+    //    setShowPostCollectionOptions(true);
+    //    addMessage("bot", "Resumed: All inputs collected. Please choose your next step.");
+    // }
 
-    // --- Determine if the loaded chat represents a completed setup ---
-    // Check if the *last* message indicates success AND we are NOT currently processing tools.
-    // This check might need refinement based on how `Main.js` signals completion back to `Agent.js` (if it does).
-    // For now, we assume loading history means we *aren't* mid-execution.
-    const lastMessage = chatEntry.messages[chatEntry.messages.length - 1];
-    // A more robust check might involve looking for the navigation trigger message or a specific success marker saved in history.
-    if (lastMessage && lastMessage.sender === 'bot' && lastMessage.text.startsWith("All inputs collected.")) {
-        // Heuristic: If the last message was the one *before* navigating, assume setup *might* be complete or viewable.
-        // This button's purpose might need redefining - maybe it should re-run the navigation?
-        // Setting isDeployReady based on past history is tricky. Let's keep it false on load for now.
-        // setIsDeployReady(true);
-        setIsDeployReady(false); // Safer default on load
-        console.log("Loaded chat ended before potential execution phase.");
-    } else {
-         setIsDeployReady(false);
-    }
 
-    // If no service was restored but messages exist beyond initial, potentially set a general active state
     if (!serviceRestored && chatEntry.messages.length > 1) {
-        setActiveButton("general"); // Or keep null depending on desired UX
+        setActiveButton("general"); 
         setFormColor("");
     }
-
-
-    setIsSidebarOpen(false); // Close sidebar after loading
+    setIsSidebarOpen(false);
   };
 
   const startNewChat = () => {
@@ -641,7 +609,10 @@ const Agent = () => {
     setCurrentToolFlow([]);
     setCurrentToolIndex(0);
     setAwaitingConfirmation(false);
-    setIsDeployReady(false);
+    // setIsDeployReady(false); // Replaced
+    setShowPostCollectionOptions(false);
+    setFinalizedValidatedResponses({});
+    setFinalizedValidatedTools([]);
     setIsSidebarOpen(false);
     setValidatedResponses({});
     setValidatedTools([]);
@@ -663,7 +634,7 @@ const Agent = () => {
     });
 
     if (currentChatId === idToDelete) {
-        startNewChat(); // Start fresh if the active chat was deleted
+        startNewChat(); 
     }
   };
 
@@ -672,28 +643,18 @@ const Agent = () => {
     <div className="agent-fullscreen">
       <NavHead />
 
-      {/* Sidebar Toggle Button */}
-      <button
-        className="sidebar-toggle-btn"
-        onClick={toggleSidebar}
-        title={isSidebarOpen ? "Close History" : "Open History"}
-      >
+      <button className="sidebar-toggle-btn" onClick={toggleSidebar} title={isSidebarOpen ? "Close History" : "Open History"}>
         <FontAwesomeIcon icon={isSidebarOpen ? faTimes : faHistory} />
       </button>
 
-      {/* Settings Button */}
       <Link to="/settings" className="settings-toggle-btn" title="Settings">
          <FontAwesomeIcon icon={faCog} />
       </Link>
 
-
-      {/* Sidebar */}
       <div className={`chat-sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <h3>Chat History</h3>
-          <button className="new-chat-btn" onClick={startNewChat} title="Start New Chat">
-            New Chat
-          </button>
+          <button className="new-chat-btn" onClick={startNewChat} title="Start New Chat"> New Chat </button>
         </div>
         <div className="sidebar-content">
           {chatHistory.length === 0 ? (
@@ -711,11 +672,7 @@ const Agent = () => {
                       </span>
                     </div>
                   </div>
-                  <button
-                    className="delete-history-btn"
-                    onClick={(e) => deleteChatHistory(chat.id, e)}
-                    title="Delete conversation"
-                  >
+                  <button className="delete-history-btn" onClick={(e) => deleteChatHistory(chat.id, e)} title="Delete conversation">
                     <FontAwesomeIcon icon={faTimes} />
                   </button>
                 </li>
@@ -725,7 +682,6 @@ const Agent = () => {
         </div>
       </div>
 
-      {/* Main Chat Area */}
       <div className={`agent-main ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -735,75 +691,67 @@ const Agent = () => {
         >
           <Card className="agent-card">
             <Card.Body className="agent-card-body">
-              {/* Chat Messages Area */}
               <div ref={chatContainerRef} className="chat-messages-container">
                 {messages.map((message, index) => (
                   <div
-                    // Using a combination of index and sender for slightly better key, though not ideal if messages are ever inserted/deleted mid-list. ID would be best.
                     key={`${message.sender}-${index}-${message.text.substring(0, 10)}`}
                     className={`message ${message.sender === "bot" ? "bot-message" : "user-message"}`}
                   >
                     {message.sender === "bot" && (
-                      <div className="bot-avatar">
-                        <img src="/ChatBot-Logo.png" alt="Acube Bot" />
-                      </div>
+                      <div className="bot-avatar"> <img src="/ChatBot-Logo.png" alt="Acube Bot" /> </div>
                     )}
-                    <div className="message-content">
-                       <div style={{ whiteSpace: 'pre-wrap' }}>{message.text}</div>
-                    </div>
+                    <div className="message-content"> <div style={{ whiteSpace: 'pre-wrap' }}>{message.text}</div> </div>
                   </div>
                 ))}
-
                 {isLoading && (
-                  <div className="message bot-message"> {/* Typing indicator */}
-                    <div className="bot-avatar">
-                      <img src="/ChatBot-Logo.png" alt="Acube Bot Typing" />
-                    </div>
-                    <div className="message-content">
-                        <div className="typing-indicator">
-                        <span></span><span></span><span></span>
-                        </div>
-                    </div>
+                  <div className="message bot-message">
+                    <div className="bot-avatar"> <img src="/ChatBot-Logo.png" alt="Acube Bot Typing" /> </div>
+                    <div className="message-content"> <div className="typing-indicator"> <span></span><span></span><span></span> </div> </div>
                   </div>
                 )}
-              </div> {/* End chat-messages-container */}
+              </div>
 
-              {/* Button Options */}
-              {/* Show if no service selected AND it's the initial message state */}
-               {!activeButton && messages.length === 1 && messages[0].text === "Hello, I am Acube! Let's Get Started!" && (
+              {/* Initial Button Options for Service Selection */}
+              {!activeButton && messages.length === 1 && messages[0].text === "Hello, I am Acube! Let's Get Started!" && !showPostCollectionOptions && (
                 <motion.div
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
                   className="button-options"
                 >
-                  <button
-                    className={`agent-button agent-button-blue`}
-                    onClick={() => handleButtonClick("blue", "blue")}
-                  >
-                    CI/CD Setup
-                  </button>
-                  <button
-                    className={`agent-button agent-button-red`}
-                    onClick={() => handleButtonClick("red", "red")}
-                  >
-                    Modify Resources
-                  </button>
-                  <button
-                    className={`agent-button agent-button-green`}
-                    onClick={() => handleButtonClick("green", "green")}
-                  >
-                    Observability
-                  </button>
+                  <button className={`agent-button agent-button-blue`} onClick={() => handleButtonClick("blue", "blue")}> CI/CD Setup </button>
+                  <button className={`agent-button agent-button-red`} onClick={() => handleButtonClick("red", "red")}> Modify Resources </button>
+                  <button className={`agent-button agent-button-green`} onClick={() => handleButtonClick("green", "green")}> Observability </button>
                 </motion.div>
               )}
 
-              {/* Deploy Button -> Removed as setup happens in Main.js */}
-              {/* {isDeployReady && ( ... )} */}
-
-               {/* Input Form */}
-               {/* Show input if a service button is active OR if it's a general chat that has progressed beyond the initial message */}
-               {(activeButton || (messages.length > 1 && !isProcessingTools && !awaitingConfirmation)) && !isDeployReady && (
+              {/* Post Data Collection Buttons */}
+              {showPostCollectionOptions && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="button-options post-collection-options" // Add a new class for specific styling if needed
+                >
+                  <button
+                    className={`agent-button agent-button-review`} // Define this class in your CSS
+                    onClick={handleNavigateToReviewDashboard}
+                    title="Review collected data before proceeding"
+                  >
+                    <FontAwesomeIcon icon={faClipboardList} /> Review Dashboard
+                  </button>
+                  <button
+                    className={`agent-button agent-button-proceed`} // Define this class in your CSS
+                    onClick={handleNavigateToMain}
+                    title="Proceed directly to setup"
+                  >
+                    <FontAwesomeIcon icon={faCogs} /> Setup CI/CD
+                  </button>
+                </motion.div>
+              )}
+              
+              {/* Input Form: Show if not loading, not showing post-collection options, and ( (service active) OR (general chat progressed beyond initial) ) */}
+              { (activeButton || (messages.length > 1 && !isProcessingTools && !awaitingConfirmation)) && !showPostCollectionOptions && !isLoading && (
                  <div className={`chat-input-container ${formColor}`}>
                   <input
                     type="text"
@@ -813,13 +761,13 @@ const Agent = () => {
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    disabled={isLoading} // Disable only when actively loading/processing
+                    disabled={isLoading} 
                     aria-label="Chat input"
                   />
                   <button
                      className="send-button"
                     onClick={handleSendMessage}
-                    disabled={isLoading || !userInput.trim()} // Disable if loading OR input empty
+                    disabled={isLoading || !userInput.trim()}
                     title="Send Message"
                     aria-label="Send Message"
                   >
@@ -830,8 +778,8 @@ const Agent = () => {
             </Card.Body>
           </Card>
         </motion.div>
-      </div> {/* End agent-main */}
-    </div> // End agent-fullscreen
+      </div>
+    </div>
   );
 };
 

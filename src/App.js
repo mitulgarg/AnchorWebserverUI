@@ -20,7 +20,7 @@ const App = () => {
         <Route path="/forms" element={<Form />} />
         <Route path="/acube" element={<Agent />} />
         <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/review-dashboard" element={<Dashboard />} />
 
       </Routes>
     </BrowserRouter>
